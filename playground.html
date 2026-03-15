@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>绘画游戏 App — 设计探索</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: #2e3348;
+    --text: #e2e8f0;
+    --muted: #8892a4;
+    --accent: #6c8eff;
+    --accent2: #a78bfa;
+    --green: #34d399;
+    --yellow: #fbbf24;
+    --red: #f87171;
+    --orange: #fb923c;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 14px;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  header {
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+
+  header h1 { font-size: 15px; font-weight: 600; }
+  header span { color: var(--muted); font-size: 12px; }
+
+  .preset-row {
+    display: flex;
+    gap: 6px;
+    margin-left: auto;
+  }
+
+  .preset-btn {
+    padding: 4px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .preset-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .main {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* ── Controls ── */
+  .controls {
+    padding: 16px;
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .section-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+
+  .control-group { display: flex; flex-direction: column; gap: 6px; }
+
+  .chip-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .chip {
+    padding: 5px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--muted);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+  }
+  .chip:hover { border-color: var(--accent); color: var(--accent); }
+  .chip.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .chip.multi.active { background: var(--accent2); border-color: var(--accent2); }
+
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .toggle-row:last-child { border-bottom: none; }
+  .toggle-label { font-size: 13px; }
+  .toggle-sub { font-size: 11px; color: var(--muted); }
+
+  .toggle {
+    position: relative;
+    width: 36px;
+    height: 20px;
+    flex-shrink: 0;
+  }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .toggle-slider {
+    position: absolute;
+    inset: 0;
+    background: var(--border);
+    border-radius: 20px;
+    cursor: pointer;
+    transition: 0.2s;
+  }
+  .toggle-slider::before {
+    content: '';
+    position: absolute;
+    width: 14px; height: 14px;
+    left: 3px; top: 3px;
+    background: #fff;
+    border-radius: 50%;
+    transition: 0.2s;
+  }
+  .toggle input:checked + .toggle-slider { background: var(--accent); }
+  .toggle input:checked + .toggle-slider::before { transform: translateX(16px); }
+
+  /* ── Preview ── */
+  .preview-area {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .preview-scroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
+    gap: 16px;
+    align-content: start;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+  }
+
+  .card-title {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* Feasibility card */
+  .feasibility-bar-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .bar-row { display: flex; align-items: center; gap: 10px; }
+  .bar-label { font-size: 12px; color: var(--muted); width: 80px; flex-shrink: 0; }
+  .bar-track {
+    flex: 1;
+    height: 8px;
+    background: var(--surface2);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.4s ease;
+  }
+  .bar-val { font-size: 12px; font-weight: 600; width: 28px; text-align: right; }
+
+  /* Cost card */
+  .cost-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .cost-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    padding: 6px 8px;
+    background: var(--surface2);
+    border-radius: 6px;
+  }
+  .cost-name { color: var(--muted); }
+  .cost-val { font-weight: 600; }
+  .cost-total {
+    margin-top: 4px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    font-weight: 700;
+    font-size: 14px;
+    padding: 8px;
+  }
+
+  /* Tech stack card */
+  .stack-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .stack-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 8px 10px;
+    background: var(--surface2);
+    border-radius: 8px;
+    border-left: 3px solid var(--accent);
+  }
+  .stack-item.warn { border-left-color: var(--yellow); }
+  .stack-item.ok { border-left-color: var(--green); }
+  .stack-role { font-size: 11px; color: var(--muted); min-width: 64px; margin-top: 1px; }
+  .stack-tech { font-size: 13px; font-weight: 600; }
+  .stack-note { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+  /* Game design card */
+  .game-features {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .feature-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 10px;
+    border-radius: 6px;
+    background: var(--surface2);
+    font-size: 13px;
+  }
+  .feature-name { }
+  .feature-badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 10px;
+  }
+  .badge-green { background: rgba(52,211,153,0.15); color: var(--green); }
+  .badge-yellow { background: rgba(251,191,36,0.15); color: var(--yellow); }
+  .badge-red { background: rgba(248,113,113,0.15); color: var(--red); }
+  .badge-blue { background: rgba(108,142,255,0.15); color: var(--accent); }
+
+  /* Prompt area */
+  .prompt-area {
+    border-top: 1px solid var(--border);
+    padding: 14px 20px;
+    background: var(--surface);
+    flex-shrink: 0;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  #prompt-text {
+    flex: 1;
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.6;
+  }
+
+  #copy-btn {
+    flex-shrink: 0;
+    padding: 6px 14px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s;
+    white-space: nowrap;
+  }
+  #copy-btn:hover { opacity: 0.85; }
+
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; margin-top: 3px; }
+  .dot-green { background: var(--green); }
+  .dot-yellow { background: var(--yellow); }
+  .dot-red { background: var(--red); }
+
+  .span-full { grid-column: 1 / -1; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🎨 绘画游戏 App — 设计探索</h1>
+  <span>调整参数，实时查看可行性与技术方案</span>
+  <div class="preset-row">
+    <button class="preset-btn" onclick="applyPreset('free')">全免费方案</button>
+    <button class="preset-btn" onclick="applyPreset('web')">Web 精简版</button>
+    <button class="preset-btn" onclick="applyPreset('ios')">iOS 完整版</button>
+    <button class="preset-btn" onclick="applyPreset('hybrid')">跨平台推荐</button>
+  </div>
+</header>
+
+<div class="main">
+
+  <!-- ── Controls ── -->
+  <div class="controls">
+
+    <div class="control-group">
+      <div class="section-title">🖥️ 平台</div>
+      <div class="chip-group" id="platform-chips">
+        <div class="chip active" data-val="web" onclick="setChip('platform', this)">Web App</div>
+        <div class="chip" data-val="ios" onclick="setChip('platform', this)">iOS 原生</div>
+        <div class="chip" data-val="rn" onclick="setChip('platform', this)">React Native</div>
+        <div class="chip" data-val="flutter" onclick="setChip('platform', this)">Flutter</div>
+      </div>
+    </div>
+
+    <div class="control-group">
+      <div class="section-title">🤖 AI 评分模型</div>
+      <div class="chip-group" id="ai-chips">
+        <div class="chip" data-val="claude" onclick="setChip('ai', this)">Claude Vision</div>
+        <div class="chip active" data-val="gemini" onclick="setChip('ai', this)">Gemini 2.0</div>
+        <div class="chip" data-val="gpt4v" onclick="setChip('ai', this)">GPT-4o Vision</div>
+        <div class="chip" data-val="free" onclick="setChip('ai', this)">纯前端 (免费)</div>
+      </div>
+    </div>
+
+    <div class="control-group">
+      <div class="section-title">🎮 游戏功能</div>
+      <div class="toggle-row">
+        <div>
+          <div class="toggle-label">难度系统 (10+ 关卡)</div>
+          <div class="toggle-sub">简单→进阶→无厘头主题</div>
+        </div>
+        <label class="toggle"><input type="checkbox" id="t-levels" checked onchange="update()"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="toggle-row">
+        <div>
+          <div class="toggle-label">AI 实时评分</div>
+          <div class="toggle-sub">每次提交后 AI 给出分数+评语</div>
+        </div>
+        <label class="toggle"><input type="checkbox" id="t-scoring" checked onchange="update()"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="toggle-row">
+        <div>
+          <div class="toggle-label">主题随机生成</div>
+          <div class="toggle-sub">AI 生成或预设题库</div>
+        </div>
+        <label class="toggle"><input type="checkbox" id="t-themes" checked onchange="update()"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="toggle-row">
+        <div>
+          <div class="toggle-label">用户账号 / 进度保存</div>
+          <div class="toggle-sub">登录、历史记录</div>
+        </div>
+        <label class="toggle"><input type="checkbox" id="t-auth" onchange="update()"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="toggle-row">
+        <div>
+          <div class="toggle-label">排行榜 / 社交分享</div>
+          <div class="toggle-sub">好友 PK、分享画作</div>
+        </div>
+        <label class="toggle"><input type="checkbox" id="t-social" onchange="update()"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="toggle-row">
+        <div>
+          <div class="toggle-label">参考图提示</div>
+          <div class="toggle-sub">难题旁边给个参考图</div>
+        </div>
+        <label class="toggle"><input type="checkbox" id="t-hints" onchange="update()"><span class="toggle-slider"></span></label>
+      </div>
+    </div>
+
+    <div class="control-group">
+      <div class="section-title">💰 主题库来源</div>
+      <div class="chip-group" id="themes-chips">
+        <div class="chip active" data-val="hardcoded" onclick="setChip('themes', this)">预设 JSON 题库</div>
+        <div class="chip" data-val="ai-gen" onclick="setChip('themes', this)">每次 AI 生成</div>
+        <div class="chip" data-val="hybrid-t" onclick="setChip('themes', this)">混合 (推荐)</div>
+      </div>
+    </div>
+
+    <div class="control-group">
+      <div class="section-title">☁️ 后端 / 托管</div>
+      <div class="chip-group" id="backend-chips">
+        <div class="chip active" data-val="none" onclick="setChip('backend', this)">纯前端 (无后端)</div>
+        <div class="chip" data-val="supabase" onclick="setChip('backend', this)">Supabase 免费</div>
+        <div class="chip" data-val="firebase" onclick="setChip('backend', this)">Firebase 免费</div>
+        <div class="chip" data-val="cf" onclick="setChip('backend', this)">Cloudflare Workers</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── Preview ── -->
+  <div class="preview-area">
+    <div class="preview-scroll">
+
+      <div class="card">
+        <div class="card-title">📊 可行性评估</div>
+        <div class="feasibility-bar-wrap" id="feasibility"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">💸 月度成本估算</div>
+        <div class="cost-grid" id="cost"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🛠️ 推荐技术栈</div>
+        <div class="stack-list" id="stack"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🎲 游戏功能分析</div>
+        <div class="game-features" id="features"></div>
+      </div>
+
+    </div>
+
+    <!-- Prompt output -->
+    <div class="prompt-area">
+      <div id="prompt-text">...</div>
+      <button id="copy-btn" onclick="copyPrompt()">复制摘要</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const state = {
+  platform: 'web',
+  ai: 'gemini',
+  themes: 'hardcoded',
+  backend: 'none',
+  levels: true,
+  scoring: true,
+  themeFeature: true,
+  auth: false,
+  social: false,
+  hints: false,
+};
+
+const DEFAULTS = { ...state };
+
+function setChip(group, el) {
+  const map = { platform: 'platform-chips', ai: 'ai-chips', themes: 'themes-chips', backend: 'backend-chips' };
+  document.querySelectorAll('#' + map[group] + ' .chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  state[group] = el.dataset.val;
+  update();
+}
+
+function update() {
+  state.levels = document.getElementById('t-levels').checked;
+  state.scoring = document.getElementById('t-scoring').checked;
+  state.themeFeature = document.getElementById('t-themes').checked;
+  state.auth = document.getElementById('t-auth').checked;
+  state.social = document.getElementById('t-social').checked;
+  state.hints = document.getElementById('t-hints').checked;
+  renderFeasibility();
+  renderCost();
+  renderStack();
+  renderFeatures();
+  renderPrompt();
+}
+
+function score(label, val, max) {
+  const pct = Math.round((val / max) * 100);
+  let color = '#34d399';
+  if (pct < 40) color = '#f87171';
+  else if (pct < 70) color = '#fbbf24';
+  document.getElementById('feasibility').innerHTML += `
+    <div class="bar-row">
+      <span class="bar-label">${label}</span>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${color}"></div></div>
+      <span class="bar-val" style="color:${color}">${pct}</span>
+    </div>`;
+}
+
+function renderFeasibility() {
+  document.getElementById('feasibility').innerHTML = '';
+  // Implementation difficulty (lower = easier)
+  let difficulty = 3;
+  if (state.platform === 'ios') difficulty += 3;
+  if (state.platform === 'rn') difficulty += 1;
+  if (state.platform === 'flutter') difficulty += 1;
+  if (state.auth) difficulty += 2;
+  if (state.social) difficulty += 2;
+  if (state.ai !== 'free') difficulty += 1;
+  score('实现难度', Math.max(0, 10 - difficulty), 10);
+
+  // Cost freedom
+  let costFree = 10;
+  if (state.ai === 'claude') costFree -= 4;
+  if (state.ai === 'gpt4v') costFree -= 4;
+  if (state.ai === 'gemini') costFree -= 1;
+  if (state.auth && state.backend === 'none') costFree -= 2;
+  if (state.platform === 'ios') costFree -= 2; // $99/yr Apple dev
+  score('免费程度', costFree, 10);
+
+  // Feature richness
+  let richness = 2;
+  if (state.levels) richness += 2;
+  if (state.scoring) richness += 2;
+  if (state.themeFeature) richness += 1;
+  if (state.auth) richness += 1;
+  if (state.social) richness += 1;
+  if (state.hints) richness += 1;
+  score('功能丰富度', richness, 10);
+
+  // Pencil / touch support
+  let input = 5;
+  if (state.platform === 'web') input = 7; // pointer events good
+  if (state.platform === 'ios') input = 10; // native pencil
+  if (state.platform === 'rn') input = 8;
+  if (state.platform === 'flutter') input = 9;
+  score('触控/笔支持', input, 10);
+
+  // Dev speed (time to ship)
+  let speed = 8;
+  if (state.platform === 'ios') speed -= 3;
+  if (state.auth) speed -= 1;
+  if (state.social) speed -= 2;
+  score('开发速度', speed, 10);
+}
+
+function costTag(v) {
+  if (v === 0) return `<span class="cost-val" style="color:var(--green)">免费</span>`;
+  if (v < 0) return `<span class="cost-val" style="color:var(--muted)">取决于使用量</span>`;
+  return `<span class="cost-val" style="color:var(--yellow)">~$${v}/月</span>`;
+}
+
+function renderCost() {
+  let rows = [];
+  let total = 0;
+
+  // Hosting
+  if (state.platform === 'web') {
+    rows.push({ name: '托管 (Vercel/Netlify)', val: 0 });
+  } else if (state.platform === 'ios') {
+    rows.push({ name: 'Apple 开发者账号', val: 8.25 }); // $99/yr
+    total += 8.25;
+  } else {
+    rows.push({ name: '托管 (Expo/Vercel)', val: 0 });
+  }
+
+  // AI cost
+  if (state.ai === 'claude') {
+    rows.push({ name: 'Claude Vision API', val: -1 });
+  } else if (state.ai === 'gpt4v') {
+    rows.push({ name: 'GPT-4o Vision API', val: -1 });
+  } else if (state.ai === 'gemini') {
+    rows.push({ name: 'Gemini 2.0 Flash (免费层)', val: 0 });
+  } else {
+    rows.push({ name: 'AI 评分 (纯前端ML)', val: 0 });
+  }
+
+  // Backend
+  if (state.backend === 'supabase') {
+    rows.push({ name: 'Supabase 免费层', val: 0 });
+  } else if (state.backend === 'firebase') {
+    rows.push({ name: 'Firebase Spark 免费', val: 0 });
+  } else if (state.backend === 'cf') {
+    rows.push({ name: 'Cloudflare Workers 免费', val: 0 });
+  }
+
+  // Domain
+  rows.push({ name: '域名 (可选)', val: 0.83 }); // $10/yr
+
+  let html = rows.map(r => `
+    <div class="cost-row">
+      <span class="cost-name">${r.name}</span>
+      ${costTag(r.val)}
+    </div>`).join('');
+
+  const totalColor = total === 0 ? 'var(--green)' : total < 15 ? 'var(--yellow)' : 'var(--red)';
+  html += `<div class="cost-total"><span>基础月费合计</span><span style="color:${totalColor}">${total === 0 ? '¥0 完全免费 🎉' : '~$' + total.toFixed(0) + '/月'}</span></div>`;
+
+  if (state.ai === 'claude' || state.ai === 'gpt4v') {
+    html += `<div style="font-size:11px;color:var(--yellow);margin-top:6px;">⚠️ AI API 费用按调用量计，个人项目轻度使用约 $2-15/月</div>`;
+  }
+
+  document.getElementById('cost').innerHTML = html;
+}
+
+function renderStack() {
+  const items = [];
+
+  // Frontend
+  if (state.platform === 'web') {
+    items.push({ role: '前端', tech: 'React + Vite', note: 'Canvas API / Fabric.js 绘图', type: 'ok' });
+    items.push({ role: '绘图', tech: 'HTML5 Canvas', note: '原生支持 Pointer Events，触控板/手写笔均可', type: 'ok' });
+  } else if (state.platform === 'ios') {
+    items.push({ role: '前端', tech: 'Swift + SwiftUI', note: 'PencilKit — Apple Pencil 原生完美支持', type: 'ok' });
+    items.push({ role: '绘图', tech: 'PencilKit', note: '最佳手写体验，压感/倾斜角', type: 'ok' });
+  } else if (state.platform === 'rn') {
+    items.push({ role: '前端', tech: 'React Native (Expo)', note: 'react-native-canvas / Skia', type: 'ok' });
+    items.push({ role: '绘图', tech: 'RN Skia', note: '跨平台，支持触控', type: 'ok' });
+  } else {
+    items.push({ role: '前端', tech: 'Flutter', note: 'CustomPainter — 跨平台绘图', type: 'ok' });
+    items.push({ role: '绘图', tech: 'CustomPainter', note: '性能好，Apple Pencil 需额外处理', type: 'warn' });
+  }
+
+  // AI
+  if (state.ai === 'claude') {
+    items.push({ role: 'AI 评分', tech: 'Claude 3 Haiku', note: '图像理解强，创意评语好，按量计费', type: 'warn' });
+  } else if (state.ai === 'gemini') {
+    items.push({ role: 'AI 评分', tech: 'Gemini 2.0 Flash', note: '免费层 1500次/天，足够个人使用', type: 'ok' });
+  } else if (state.ai === 'gpt4v') {
+    items.push({ role: 'AI 评分', tech: 'GPT-4o Vision', note: '质量高但成本较高', type: 'warn' });
+  } else {
+    items.push({ role: 'AI 评分', tech: 'TensorFlow.js', note: '本地运行，完全免费，但精度有限', type: 'warn' });
+  }
+
+  // Themes
+  if (state.themes === 'hardcoded') {
+    items.push({ role: '题库', tech: '预设 JSON', note: '100-500 道分级题目，维护简单', type: 'ok' });
+  } else if (state.themes === 'ai-gen') {
+    items.push({ role: '题库', tech: 'AI 实时生成', note: '无限题目，但增加 API 调用', type: 'warn' });
+  } else {
+    items.push({ role: '题库', tech: '混合方案', note: '预设 + AI 生成高难度题目，推荐', type: 'ok' });
+  }
+
+  // Backend
+  if (state.backend === 'none') {
+    items.push({ role: '后端', tech: '无后端', note: '进度存 localStorage，零成本', type: state.auth ? 'warn' : 'ok' });
+  } else if (state.backend === 'supabase') {
+    items.push({ role: '后端', tech: 'Supabase', note: '免费层 500MB DB，含 Auth', type: 'ok' });
+  } else if (state.backend === 'firebase') {
+    items.push({ role: '后端', tech: 'Firebase', note: 'Firestore + Auth，免费层宽裕', type: 'ok' });
+  } else {
+    items.push({ role: '后端', tech: 'CF Workers + KV', note: '边缘计算，免费层 100k req/天', type: 'ok' });
+  }
+
+  document.getElementById('stack').innerHTML = items.map(i => `
+    <div class="stack-item ${i.type}">
+      <span class="stack-role">${i.role}</span>
+      <div>
+        <div class="stack-tech">${i.tech}</div>
+        <div class="stack-note">${i.note}</div>
+      </div>
+    </div>`).join('');
+}
+
+function badge(text, type) {
+  return `<span class="feature-badge badge-${type}">${text}</span>`;
+}
+
+function renderFeatures() {
+  const rows = [];
+
+  // Drawing canvas
+  rows.push({ name: '🖌️ 绘画画布', b: badge(state.platform === 'ios' ? '原生完美' : state.platform === 'web' ? '可实现' : '跨平台可用', state.platform === 'ios' ? 'green' : 'blue') });
+
+  // Difficulty
+  if (state.levels) rows.push({ name: '🎯 10+ 难度关卡', b: badge('可实现', 'green') });
+
+  // AI scoring
+  if (state.scoring) {
+    const aiOk = state.ai !== 'free';
+    rows.push({ name: '🤖 AI 智能评分', b: badge(aiOk ? (state.ai === 'gemini' ? '免费可行' : '付费可行') : '本地ML有限', aiOk ? (state.ai === 'gemini' ? 'green' : 'yellow') : 'yellow') });
+  }
+
+  // Theme generation
+  if (state.themeFeature) {
+    rows.push({ name: '🎲 主题随机生成', b: badge(state.themes === 'hardcoded' ? '预设题库' : '动态生成', state.themes === 'hardcoded' ? 'green' : 'blue') });
+  }
+
+  // Auth
+  if (state.auth) {
+    rows.push({ name: '👤 用户账号系统', b: badge(state.backend !== 'none' ? '可实现' : '需要后端', state.backend !== 'none' ? 'green' : 'red') });
+  }
+
+  // Social
+  if (state.social) {
+    rows.push({ name: '🏆 排行榜/社交', b: badge(state.backend !== 'none' ? '可实现' : '需要后端', state.backend !== 'none' ? 'green' : 'red') });
+  }
+
+  // Hints
+  if (state.hints) {
+    rows.push({ name: '💡 参考图提示', b: badge(state.ai !== 'free' ? '可用 AI 生成' : '可用预存图', 'blue') });
+  }
+
+  // Content safety
+  rows.push({ name: '🛡️ 内容安全 (无底线内容)', b: badge('Claude/Gemini 内置', 'green') });
+
+  // Apple pencil
+  if (state.platform === 'ios') rows.push({ name: '✏️ Apple Pencil 支持', b: badge('原生完美', 'green') });
+  else if (state.platform === 'web') rows.push({ name: '✏️ Apple Pencil 支持', b: badge('Safari 部分支持', 'yellow') });
+
+  document.getElementById('features').innerHTML = rows.map(r => `
+    <div class="feature-row">
+      <span class="feature-name">${r.name}</span>
+      ${r.b}
+    </div>`).join('');
+}
+
+function renderPrompt() {
+  const platformName = { web: 'Web App (React)', ios: 'iOS 原生 (Swift)', rn: 'React Native/Expo', flutter: 'Flutter' }[state.platform];
+  const aiName = { claude: 'Claude Vision', gemini: 'Gemini 2.0 Flash (免费)', gpt4v: 'GPT-4o Vision', free: 'TensorFlow.js 本地推理' }[state.ai];
+  const backendName = { none: '无后端(localStorage)', supabase: 'Supabase', firebase: 'Firebase', cf: 'Cloudflare Workers' }[state.backend];
+  const themeName = { hardcoded: '预设 JSON 题库', 'ai-gen': 'AI 实时生成', 'hybrid-t': '预设 + AI 混合' }[state.themes];
+
+  const features = [];
+  if (state.levels) features.push('10 个难度等级');
+  if (state.scoring) features.push(`${aiName} 评分`);
+  if (state.themeFeature) features.push(`${themeName}主题`);
+  if (state.auth) features.push('用户账号');
+  if (state.social) features.push('排行榜');
+  if (state.hints) features.push('提示图');
+
+  document.getElementById('prompt-text').textContent =
+    `帮我构建一个绘画游戏 App，平台: ${platformName}，` +
+    `AI 评分: ${aiName}，后端: ${backendName}，` +
+    `主题库: ${themeName}。` +
+    (features.length ? `核心功能: ${features.join('、')}。` : '') +
+    `游戏流程: 随机出题(从"画苹果"到"猪在故宫里"等无厘头主题)，玩家作画，AI 给出分数和评语，达标则解锁下一关。内容安全通过 AI 模型内置审核保障。`;
+}
+
+function copyPrompt() {
+  navigator.clipboard.writeText(document.getElementById('prompt-text').textContent).then(() => {
+    const btn = document.getElementById('copy-btn');
+    btn.textContent = '已复制!';
+    setTimeout(() => btn.textContent = '复制摘要', 1500);
+  });
+}
+
+function setActiveChip(groupId, val) {
+  document.querySelectorAll('#' + groupId + ' .chip').forEach(c => {
+    c.classList.toggle('active', c.dataset.val === val);
+  });
+}
+
+function applyPreset(name) {
+  const presets = {
+    free: { platform: 'web', ai: 'free', themes: 'hardcoded', backend: 'none', levels: true, scoring: false, themeFeature: true, auth: false, social: false, hints: false },
+    web:  { platform: 'web', ai: 'gemini', themes: 'hardcoded', backend: 'none', levels: true, scoring: true, themeFeature: true, auth: false, social: false, hints: false },
+    ios:  { platform: 'ios', ai: 'claude', themes: 'hybrid-t', backend: 'supabase', levels: true, scoring: true, themeFeature: true, auth: true, social: true, hints: true },
+    hybrid: { platform: 'rn', ai: 'gemini', themes: 'hybrid-t', backend: 'supabase', levels: true, scoring: true, themeFeature: true, auth: false, social: false, hints: false },
+  };
+  const p = presets[name];
+  Object.assign(state, p);
+  setActiveChip('platform-chips', p.platform);
+  setActiveChip('ai-chips', p.ai);
+  setActiveChip('themes-chips', p.themes);
+  setActiveChip('backend-chips', p.backend);
+  document.getElementById('t-levels').checked = p.levels;
+  document.getElementById('t-scoring').checked = p.scoring;
+  document.getElementById('t-themes').checked = p.themeFeature;
+  document.getElementById('t-auth').checked = p.auth;
+  document.getElementById('t-social').checked = p.social;
+  document.getElementById('t-hints').checked = p.hints;
+  update();
+}
+
+update();
+</script>
+</body>
+</html>
