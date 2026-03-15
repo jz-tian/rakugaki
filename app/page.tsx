@@ -190,7 +190,7 @@ export default function HomePage() {
                       }}
                     >
                       {t(lang, `home.diff.${key}`)}
-                      <em className="font-cormorant italic text-[0.72rem] opacity-45 not-italic" style={{ fontStyle: 'italic' }}>
+                      <em className="font-cormorant text-[0.72rem] opacity-45" style={{ fontStyle: 'italic' }}>
                         {threshold}
                       </em>
                     </button>
