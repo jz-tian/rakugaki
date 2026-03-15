@@ -131,10 +131,10 @@ export default function GalleryCard({ work, lang, onDelete }: Props) {
             {/* Footer bar */}
             <div
               className="flex items-center justify-between px-5 py-3"
-              style={{ borderTop: '0.5px solid var(--rule)' }}
+              style={{ borderTop: '0.5px solid var(--rule)', flexWrap: 'wrap', gap: '8px' }}
             >
               {/* Level + prompt */}
-              <div className="flex items-center gap-3 min-w-0">
+              <div className="flex items-center gap-3 min-w-0" style={{ minWidth: 0 }}>
                 <span
                   className="shrink-0 text-[11px] px-2 py-0.5"
                   style={{

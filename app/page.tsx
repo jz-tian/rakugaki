@@ -130,7 +130,7 @@ export default function HomePage() {
           className="flex items-center justify-center relative py-6 max-w-[820px] w-full mx-auto"
           style={{ borderTop: '0.5px solid var(--rule)' }}
         >
-          <div className="flex items-center gap-10">
+          <div className="flex flex-col sm:flex-row items-center gap-5 sm:gap-10">
             {/* Difficulty tabs */}
             <div className="flex flex-col items-center gap-1.5">
               <span className="text-[0.6rem] tracking-[0.2em] uppercase" style={{ color: 'var(--ink-3)' }}>
@@ -162,7 +162,7 @@ export default function HomePage() {
               </div>
             </div>
 
-            <div className="h-8 w-px" style={{ background: 'var(--rule)' }} />
+            <div className="hidden sm:block h-8 w-px" style={{ background: 'var(--rule)' }} />
 
             {/* Start button */}
             <button
@@ -191,7 +191,7 @@ export default function HomePage() {
           {/* Scroll hint */}
           <a
             href="#gallery"
-            className="absolute right-0 flex items-center gap-1.5 font-cormorant italic text-[0.8rem] tracking-[0.1em] no-underline transition-colors"
+            className="hidden sm:flex absolute right-0 items-center gap-1.5 font-cormorant italic text-[0.8rem] tracking-[0.1em] no-underline transition-colors"
             style={{ color: 'var(--ink-3)' }}
           >
             {t(lang, 'home.scroll.label')}
@@ -235,7 +235,7 @@ export default function HomePage() {
             <div
               className="grid gap-px"
               style={{
-                gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
                 background: 'var(--rule)',
                 border: '0.5px solid var(--rule)',
               }}

@@ -177,9 +177,8 @@ export default function GamePage() {
           {/* Prompt / status text */}
           {(phase === 'drawing' || phase === 'submitting') && prompt && (
             <span
-              className="font-shippori truncate"
+              className="font-shippori truncate text-sm md:text-[0.95rem]"
               style={{
-                fontSize: '0.95rem',
                 color: 'var(--ink)',
                 letterSpacing: '0.06em',
                 lineHeight: 1.4,
@@ -230,107 +229,131 @@ export default function GamePage() {
       {/* ── Main: toolbar + canvas ────────────────── */}
       <div className="flex flex-1 overflow-hidden">
 
-        <Toolbar
-          tool={tool} brushStyle={brushStyle} color={color} size={size} lang={lang}
-          onToolChange={setTool}
-          onBrushStyleChange={setBrushStyle}
-          onColorChange={setColor}
-          onSizeChange={setSize}
-          onUndo={() => canvasRef.current?.undo()}
-          onRedo={() => canvasRef.current?.redo()}
-          onClear={() => canvasRef.current?.clear()}
-        />
+        {/* Desktop sidebar toolbar */}
+        <div className="hidden md:block">
+          <Toolbar
+            layout="vertical"
+            tool={tool} brushStyle={brushStyle} color={color} size={size} lang={lang}
+            onToolChange={setTool}
+            onBrushStyleChange={setBrushStyle}
+            onColorChange={setColor}
+            onSizeChange={setSize}
+            onUndo={() => canvasRef.current?.undo()}
+            onRedo={() => canvasRef.current?.redo()}
+            onClear={() => canvasRef.current?.clear()}
+          />
+        </div>
 
-        {/* Canvas area — washi dot-grid ground */}
-        <div
-          className="flex-1 flex items-center justify-center overflow-hidden washi-grid"
-          style={{ padding: '28px' }}
-        >
-          {phase === 'error' ? (
-            <div className="text-center" style={{ maxWidth: '360px' }}>
-              {/* Decorative kanji 失敗 error feel */}
-              <p
-                className="font-shippori"
-                style={{
-                  fontSize: '0.82rem',
-                  letterSpacing: '0.25em',
-                  color: 'var(--beni)',
-                  marginBottom: '14px',
-                  textTransform: 'uppercase',
-                }}
-              >
-                エラー
-              </p>
-              <p
-                className="font-cormorant italic"
-                style={{ fontSize: '1.1rem', color: 'var(--ink-2)', marginBottom: '32px', lineHeight: 1.7 }}
-              >
-                {errorMsg}
-              </p>
-              <button
-                onClick={() => fetchPrompt(level, difficulty, lang)}
-                style={{
-                  color: 'var(--beni)',
-                  border: '1px solid var(--beni)',
-                  background: 'transparent',
-                  padding: '10px 36px',
-                  fontFamily: 'var(--font-cormorant)',
-                  fontSize: '1.1rem',
-                  letterSpacing: '0.1em',
-                  cursor: 'pointer',
-                  borderRadius: '2px',
-                  transition: 'all 0.15s',
-                }}
-                onMouseEnter={e => {
-                  (e.currentTarget as HTMLElement).style.background = 'var(--beni)';
-                  (e.currentTarget as HTMLElement).style.color = 'var(--surface)';
-                }}
-                onMouseLeave={e => {
-                  (e.currentTarget as HTMLElement).style.background = 'transparent';
-                  (e.currentTarget as HTMLElement).style.color = 'var(--beni)';
-                }}
-              >
-                {t(lang, 'result.newRound')}
-              </button>
-            </div>
-          ) : (
-            /* Canvas card — paper sheet on washi ground */
-            <div
-              className="w-full max-w-[800px] aspect-[4/3] relative"
-              style={{
-                boxShadow: '0 2px 8px oklch(13% 0.018 258 / 0.08), 0 12px 40px oklch(13% 0.018 258 / 0.12)',
-                border: '0.5px solid var(--rule)',
-              }}
-            >
-              {/* Corner marks — like manuscript paper registration marks */}
-              {(['top-0 left-0', 'top-0 right-0', 'bottom-0 left-0', 'bottom-0 right-0'] as const).map((pos, i) => (
-                <div
-                  key={i}
-                  className={`absolute ${pos} w-4 h-4 pointer-events-none`}
-                  style={{ zIndex: 2 }}
+        {/* Canvas column + mobile toolbar */}
+        <div className="flex flex-col flex-1 overflow-hidden">
+
+          {/* Canvas area — washi dot-grid ground */}
+          <div
+            className="flex-1 flex items-center justify-center overflow-hidden washi-grid"
+            style={{ padding: 'clamp(8px, 3vw, 28px)' }}
+          >
+            {phase === 'error' ? (
+              <div className="text-center" style={{ maxWidth: '360px' }}>
+                {/* Decorative kanji 失敗 error feel */}
+                <p
+                  className="font-shippori"
+                  style={{
+                    fontSize: '0.82rem',
+                    letterSpacing: '0.25em',
+                    color: 'var(--beni)',
+                    marginBottom: '14px',
+                    textTransform: 'uppercase',
+                  }}
                 >
-                  <svg
-                    viewBox="0 0 16 16" fill="none"
-                    style={{
-                      width: '16px', height: '16px',
-                      transform: `rotate(${i * 90}deg)`,
-                    }}
+                  エラー
+                </p>
+                <p
+                  className="font-cormorant italic"
+                  style={{ fontSize: '1.1rem', color: 'var(--ink-2)', marginBottom: '32px', lineHeight: 1.7 }}
+                >
+                  {errorMsg}
+                </p>
+                <button
+                  onClick={() => fetchPrompt(level, difficulty, lang)}
+                  style={{
+                    color: 'var(--beni)',
+                    border: '1px solid var(--beni)',
+                    background: 'transparent',
+                    padding: '10px 36px',
+                    fontFamily: 'var(--font-cormorant)',
+                    fontSize: '1.1rem',
+                    letterSpacing: '0.1em',
+                    cursor: 'pointer',
+                    borderRadius: '2px',
+                    transition: 'all 0.15s',
+                  }}
+                  onMouseEnter={e => {
+                    (e.currentTarget as HTMLElement).style.background = 'var(--beni)';
+                    (e.currentTarget as HTMLElement).style.color = 'var(--surface)';
+                  }}
+                  onMouseLeave={e => {
+                    (e.currentTarget as HTMLElement).style.background = 'transparent';
+                    (e.currentTarget as HTMLElement).style.color = 'var(--beni)';
+                  }}
+                >
+                  {t(lang, 'result.newRound')}
+                </button>
+              </div>
+            ) : (
+              /* Canvas card — paper sheet on washi ground */
+              <div
+                className="w-full max-w-[800px] aspect-[4/3] relative"
+                style={{
+                  boxShadow: '0 2px 8px oklch(13% 0.018 258 / 0.08), 0 12px 40px oklch(13% 0.018 258 / 0.12)',
+                  border: '0.5px solid var(--rule)',
+                }}
+              >
+                {/* Corner marks — like manuscript paper registration marks */}
+                {(['top-0 left-0', 'top-0 right-0', 'bottom-0 left-0', 'bottom-0 right-0'] as const).map((pos, i) => (
+                  <div
+                    key={i}
+                    className={`absolute ${pos} w-4 h-4 pointer-events-none`}
+                    style={{ zIndex: 2 }}
                   >
-                    <path d="M1 15 L1 1 L15 1" stroke="var(--beni)" strokeWidth="1.2" strokeLinecap="round" opacity="0.45"/>
-                  </svg>
-                </div>
-              ))}
+                    <svg
+                      viewBox="0 0 16 16" fill="none"
+                      style={{
+                        width: '16px', height: '16px',
+                        transform: `rotate(${i * 90}deg)`,
+                      }}
+                    >
+                      <path d="M1 15 L1 1 L15 1" stroke="var(--beni)" strokeWidth="1.2" strokeLinecap="round" opacity="0.45"/>
+                    </svg>
+                  </div>
+                ))}
 
-              <Canvas
-                ref={canvasRef}
-                brushStyle={brushStyle}
-                color={color}
-                size={size}
-                tool={tool}
-                locked={phase !== 'drawing'}
-              />
-            </div>
-          )}
+                <Canvas
+                  ref={canvasRef}
+                  brushStyle={brushStyle}
+                  color={color}
+                  size={size}
+                  tool={tool}
+                  locked={phase !== 'drawing'}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Mobile bottom toolbar */}
+          <div className="md:hidden">
+            <Toolbar
+              layout="horizontal"
+              tool={tool} brushStyle={brushStyle} color={color} size={size} lang={lang}
+              onToolChange={setTool}
+              onBrushStyleChange={setBrushStyle}
+              onColorChange={setColor}
+              onSizeChange={setSize}
+              onUndo={() => canvasRef.current?.undo()}
+              onRedo={() => canvasRef.current?.redo()}
+              onClear={() => canvasRef.current?.clear()}
+            />
+          </div>
+
         </div>
       </div>
 

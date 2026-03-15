@@ -44,6 +44,33 @@ function FillIcon({ active }: { active: boolean }) {
   );
 }
 
+/* ── Undo/Redo/Clear icons ───────────────────────── */
+function UndoIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" className="w-[20px] h-[20px]">
+      <path d="M4 8C5.5 5 8.5 3.5 12 4C15.5 4.5 18 7.5 18 11C18 14.5 15.5 17 12 17C9 17 6.5 15 5.5 12"
+        stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
+      <path d="M4 4L4 8L8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+    </svg>
+  );
+}
+function RedoIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" className="w-[20px] h-[20px]">
+      <path d="M16 8C14.5 5 11.5 3.5 8 4C4.5 4.5 2 7.5 2 11C2 14.5 4.5 17 8 17C11 17 13.5 15 14.5 12"
+        stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
+      <path d="M16 4L16 8L12 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+    </svg>
+  );
+}
+function ClearIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" className="w-[20px] h-[20px]">
+      <path d="M5 5L15 15M15 5L5 15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
 /* ── Brush stroke previews ───────────────────────── */
 function StrokePreview({ style, active }: { style: BrushStyle; active: boolean }) {
   const c = active ? 'var(--beni)' : 'var(--ink-3)';
@@ -75,12 +102,40 @@ function StrokePreview({ style, active }: { style: BrushStyle; active: boolean }
   );
 }
 
+/* ── Horizontal stroke preview (compact) ────────── */
+function StrokePreviewH({ style, active }: { style: BrushStyle; active: boolean }) {
+  const c = active ? 'var(--beni)' : 'var(--ink-3)';
+  return (
+    <svg viewBox="0 0 28 12" style={{ width: '28px', height: '12px' }}>
+      {style === 'normal' && (
+        <path d="M2 6Q10 6 14 6Q18 6 26 6"
+          stroke={c} strokeWidth="2.6" strokeLinecap="round" fill="none"/>
+      )}
+      {style === 'pencil' && (
+        <>
+          <path d="M2 5.5Q10 4.5 14 5Q18 5.5 26 4.5"
+            stroke={c} strokeWidth="1.8" strokeLinecap="round" fill="none" opacity="0.9"/>
+          <path d="M2 7Q10 8 14 7Q18 6 26 7.5"
+            stroke={c} strokeWidth="0.8" strokeLinecap="round" fill="none" opacity="0.38"/>
+        </>
+      )}
+      {style === 'ink' && (
+        <>
+          <path d="M2 5.5C5 5.5 10 5 14 5.5C18 6 22 6.5 26 7"
+            stroke={c} strokeWidth="4.5" strokeLinecap="round" fill="none" opacity="0.88"/>
+        </>
+      )}
+    </svg>
+  );
+}
+
 interface ToolbarProps {
   tool: 'brush' | 'eraser' | 'fill';
   brushStyle: BrushStyle;
   color: string;
   size: number;
   lang?: 'en' | 'zh';
+  layout?: 'vertical' | 'horizontal';
   onToolChange: (t: 'brush' | 'eraser' | 'fill') => void;
   onBrushStyleChange: (s: BrushStyle) => void;
   onColorChange: (c: string) => void;
@@ -94,12 +149,164 @@ function Sep() {
   return <div style={{ margin: '2px 10px', height: '0.5px', background: 'var(--rule)', flexShrink: 0 }} />;
 }
 
+function VertSep() {
+  return <div className="shrink-0" style={{ width: '0.5px', height: '28px', background: 'var(--rule)', margin: '0 6px' }} />;
+}
+
 export default function Toolbar({
-  tool, brushStyle, color, size, lang = 'zh',
+  tool, brushStyle, color, size, lang = 'zh', layout = 'vertical',
   onToolChange, onBrushStyleChange, onColorChange, onSizeChange,
   onUndo, onRedo, onClear,
 }: ToolbarProps) {
   const en = lang === 'en';
+
+  /* ── Horizontal layout ────────────────────────────── */
+  if (layout === 'horizontal') {
+    return (
+      <div
+        className="flex items-center toolbar-scroll overflow-x-auto shrink-0"
+        style={{
+          height: '52px',
+          background: 'var(--surface)',
+          borderTop: '0.5px solid var(--rule)',
+          paddingLeft: '8px',
+          paddingRight: '8px',
+        }}
+      >
+        {/* Tool icons */}
+        {([
+          { id: 'brush'  as const, Icon: BrushIcon  },
+          { id: 'eraser' as const, Icon: EraserIcon },
+          { id: 'fill'   as const, Icon: FillIcon   },
+        ]).map(({ id, Icon }) => {
+          const active = tool === id;
+          return (
+            <button
+              key={id}
+              onClick={() => onToolChange(id)}
+              title={id}
+              className="shrink-0 flex items-center justify-center rounded transition-all"
+              style={{
+                width: '36px', height: '36px',
+                background: active ? 'var(--beni-soft)' : 'transparent',
+                position: 'relative',
+              }}
+            >
+              {active && (
+                <div
+                  className="absolute bottom-0 left-1/2 -translate-x-1/2 rounded-t"
+                  style={{ width: '20px', height: '2px', background: 'var(--beni)' }}
+                />
+              )}
+              <Icon active={active} />
+            </button>
+          );
+        })}
+
+        <VertSep />
+
+        {/* Undo / Redo / Clear */}
+        {([
+          { label: 'Undo', fn: onUndo, Icon: UndoIcon },
+          { label: 'Redo', fn: onRedo, Icon: RedoIcon },
+          { label: 'Clear', fn: onClear, Icon: ClearIcon, beni: true },
+        ] as { label: string; fn: () => void; Icon: () => JSX.Element; beni?: boolean }[]).map(({ label, fn, Icon, beni }) => (
+          <button
+            key={label}
+            onClick={fn}
+            title={label}
+            className="shrink-0 flex items-center justify-center rounded transition-all"
+            style={{
+              width: '36px', height: '36px',
+              background: 'transparent',
+              color: beni ? 'var(--beni)' : 'var(--ink-2)',
+            }}
+          >
+            <Icon />
+          </button>
+        ))}
+
+        {/* Brush styles — only when brush active */}
+        {tool === 'brush' && (
+          <>
+            <VertSep />
+            {(['normal', 'pencil', 'ink'] as BrushStyle[]).map(s => {
+              const active = brushStyle === s;
+              return (
+                <button
+                  key={s}
+                  onClick={() => onBrushStyleChange(s)}
+                  title={s}
+                  className="shrink-0 flex items-center justify-center rounded transition-all"
+                  style={{
+                    minWidth: '40px', height: '36px',
+                    padding: '0 6px',
+                    background: active ? 'var(--beni-soft)' : 'transparent',
+                  }}
+                >
+                  <StrokePreviewH style={s} active={active} />
+                </button>
+              );
+            })}
+          </>
+        )}
+
+        <VertSep />
+
+        {/* Color swatch */}
+        <div className="shrink-0 relative flex items-center justify-center" style={{ width: '36px', height: '36px' }}>
+          <div
+            className="rounded"
+            style={{
+              width: '22px', height: '22px',
+              background: color,
+              border: '0.5px solid var(--rule)',
+              pointerEvents: 'none',
+            }}
+          />
+          <input
+            type="color"
+            value={color}
+            onChange={e => onColorChange(e.target.value)}
+            style={{
+              position: 'absolute', inset: 0,
+              opacity: 0,
+              width: '100%', height: '100%',
+              cursor: 'pointer',
+            }}
+            aria-label="Pick color"
+          />
+        </div>
+
+        <VertSep />
+
+        {/* Size − number + */}
+        <div className="shrink-0 flex items-center gap-1">
+          <button
+            onClick={() => onSizeChange(Math.max(1, size - 1))}
+            className="flex items-center justify-center rounded transition-all"
+            style={{ width: '28px', height: '36px', color: 'var(--ink-2)', background: 'transparent', fontSize: '1rem' }}
+            aria-label="Decrease size"
+          >
+            −
+          </button>
+          <span style={{ fontSize: '11px', fontFamily: 'var(--font-dm)', color: 'var(--ink-3)', minWidth: '18px', textAlign: 'center' }}>
+            {size}
+          </span>
+          <button
+            onClick={() => onSizeChange(Math.min(30, size + 1))}
+            className="flex items-center justify-center rounded transition-all"
+            style={{ width: '28px', height: '36px', color: 'var(--ink-2)', background: 'transparent', fontSize: '1rem' }}
+            aria-label="Increase size"
+          >
+            +
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  /* ── Vertical layout (default) ────────────────────── */
   return (
     <aside
       className="flex flex-col shrink-0 toolbar-scroll overflow-y-auto"
