@@ -29,12 +29,10 @@ export function verifyToken(token: string): TokenPayload {
   const data = token.slice(0, dotIdx);
   const sig  = token.slice(dotIdx + 1);
 
-  const expected = crypto.createHmac('sha256', getSecret()).update(data).digest('base64url');
-
-  // Constant-time comparison — pad to same length first
-  const a = Buffer.from(sig.padEnd(expected.length, '\0'));
-  const b = Buffer.from(expected.padEnd(sig.length, '\0'));
-  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+  const expected = crypto.createHmac('sha256', getSecret()).update(data).digest();
+  // expected is a 32-byte Buffer (SHA-256 output)
+  const sigBuf = Buffer.from(sig, 'base64url');
+  if (sigBuf.length !== expected.length || !crypto.timingSafeEqual(sigBuf, expected)) {
     throw new Error('Invalid token signature');
   }
 
