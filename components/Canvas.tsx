@@ -55,6 +55,18 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(
       saveSnapshot();
     }, []);
 
+    // ── Keyboard shortcuts ─────────────────────────────────
+    useEffect(() => {
+      const handler = (e: KeyboardEvent) => {
+        if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
+          e.preventDefault();
+          if (e.shiftKey) redo(); else undo();
+        }
+      };
+      window.addEventListener('keydown', handler);
+      return () => window.removeEventListener('keydown', handler);
+    }, []);
+
     // ── Imperative handle ─────────────────────────────────
     useImperativeHandle(ref, () => ({
       exportPNG() {
