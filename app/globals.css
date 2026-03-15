@@ -3,25 +3,37 @@
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg:           oklch(96.5% 0.012 74);
+  --surface:      oklch(99%   0.004 74);
+  --ink:          oklch(13%   0.018 258);
+  --ink-2:        oklch(42%   0.012 258);
+  --ink-3:        oklch(70%   0.008 258);
+  --rule:         oklch(84%   0.010 258);
+  --beni:         oklch(51%   0.210 27);
+  --s-hi:         oklch(50%   0.160 152);
+  --s-hi-bg:      oklch(93%   0.048 152);
+  --s-mid:        oklch(58%   0.150 63);
+  --s-mid-bg:     oklch(93%   0.052 63);
+  --s-lo:         oklch(50%   0.185 27);
+  --s-lo-bg:      oklch(93%   0.048 27);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+@layer base {
+  html { scroll-behavior: smooth; }
+  body { font-family: var(--font-dm), 'Noto Sans JP', sans-serif; }
 }
 
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
-}
+.font-shippori { font-family: var(--font-shippori), serif; }
+.font-cormorant { font-family: var(--font-cormorant), serif; }
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
+@keyframes bobDown {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(5px); }
 }
+.animate-bob { animation: bobDown 2.2s ease-in-out infinite; }
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fadeup { animation: fadeUp 0.5s ease both; }

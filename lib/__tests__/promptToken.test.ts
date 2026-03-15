@@ -12,7 +12,7 @@ describe('signToken / verifyToken', () => {
 
   it('throws on tampered payload', () => {
     const token = signToken({ prompt: 'Draw a cat', difficulty: 'easy' });
-    const [data, sig] = token.split('.');
+    const [, sig] = token.split('.');
     const tampered = Buffer.from(JSON.stringify({ prompt: 'Evil', exp: Date.now() + 9999 }))
       .toString('base64url');
     expect(() => verifyToken(`${tampered}.${sig}`)).toThrow();
@@ -29,6 +29,7 @@ describe('signToken / verifyToken', () => {
     const data = Buffer.from(JSON.stringify({
       prompt: 'test', difficulty: 'easy', exp: Date.now() - 1000,
     })).toString('base64url');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const crypto = require('crypto');
     const sig = crypto.createHmac('sha256', process.env.PROMPT_SECRET!)
       .update(data).digest('base64url');
