@@ -1,0 +1,44 @@
+import crypto from 'crypto';
+import type { Difficulty } from './types';
+
+interface TokenPayload {
+  prompt: string;
+  difficulty: Difficulty;
+  exp: number; // unix ms
+}
+
+const TTL_MS = 10 * 60 * 1000; // 10 minutes
+
+function getSecret(): string {
+  const s = process.env.PROMPT_SECRET;
+  if (!s) throw new Error('PROMPT_SECRET env var is required');
+  return s;
+}
+
+export function signToken(payload: Omit<TokenPayload, 'exp'>): string {
+  const full: TokenPayload = { ...payload, exp: Date.now() + TTL_MS };
+  const data = Buffer.from(JSON.stringify(full)).toString('base64url');
+  const sig = crypto.createHmac('sha256', getSecret()).update(data).digest('base64url');
+  return `${data}.${sig}`;
+}
+
+export function verifyToken(token: string): TokenPayload {
+  const dotIdx = token.lastIndexOf('.');
+  if (dotIdx === -1) throw new Error('Invalid token format');
+
+  const data = token.slice(0, dotIdx);
+  const sig  = token.slice(dotIdx + 1);
+
+  const expected = crypto.createHmac('sha256', getSecret()).update(data).digest('base64url');
+
+  // Constant-time comparison — pad to same length first
+  const a = Buffer.from(sig.padEnd(expected.length, '\0'));
+  const b = Buffer.from(expected.padEnd(sig.length, '\0'));
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+    throw new Error('Invalid token signature');
+  }
+
+  const payload: TokenPayload = JSON.parse(Buffer.from(data, 'base64url').toString('utf8'));
+  if (Date.now() > payload.exp) throw new Error('Token expired');
+  return payload;
+}
