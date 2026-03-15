@@ -1,0 +1,6 @@
+{
+  "functions": {
+    "app/api/generate-prompt/route.ts": { "maxDuration": 9 },
+    "app/api/score/route.ts": { "maxDuration": 9 }
+  }
+}
