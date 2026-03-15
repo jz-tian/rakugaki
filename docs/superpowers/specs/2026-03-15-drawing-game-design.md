@@ -139,11 +139,24 @@ Server-side logic:
 
 ### `/` — Home
 
-- Game title and tagline
-- Language toggle (中文 / English) — top right; persists to localStorage
-- Difficulty selector: Easy / Normal / Hard (with pass score shown, e.g., "pass: 60+")
-- Current level display — reads from localStorage; defaults to **Level 1** if no saved state
-- "Start Drawing" button → navigates to `/game`
+**Layout (top to bottom):**
+1. **Header bar** — game title logo (left) + language toggle 中文/EN (right)
+2. **Hero** — giant display-size game title "SCRAWL." fills the viewport width; tagline in italic below; a 4-step rules strip (Pick → Prompt → Draw → Score) separated by a horizontal rule
+3. **Controls row** — difficulty pills (Easy 60+ / Normal 75+ / Hard 85+) on the left, current level indicator in the middle, "Start Drawing" CTA on the right
+4. **Past Works gallery** — heading + drawing count; masonry-style grid of past submission cards
+
+**Gallery card anatomy:**
+- White canvas area showing the drawing thumbnail
+- Prompt label at the bottom (e.g., "Draw: An apple")
+- **Score stamp** in the top-right corner: circular badge, slightly rotated (~8°), color-coded:
+  - Green (score ≥ 75)
+  - Amber (score 50–74)
+  - Red (score < 50)
+- Level badge (e.g., "Lv.3") in the top-left corner
+
+**Gallery data** persisted in localStorage as `pastWorks` array. Empty state shows an illustrated placeholder with a prompt to start playing.
+
+**Visual direction:** Editorial/gallery aesthetic. Off-white background, near-black ink, bold Syne display font for the title, DM Sans for body. The only color accents are the score badge colors and a red accent on the CTA and title punctuation. Clean, modern, not "game-y".
 
 ### `/game` — Game
 
