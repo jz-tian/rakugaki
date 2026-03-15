@@ -24,6 +24,7 @@ const cormorant = Cormorant_Garamond({
 export const metadata: Metadata = {
   title: '落書き — AI Drawing Judge',
   description: 'Draw anything. Get judged by AI. Level up or try again.',
+  icons: { icon: '/logo.svg' },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -11,39 +11,58 @@ import type { Language, Difficulty } from '@/lib/types';
 
 type Phase = 'loading' | 'drawing' | 'submitting' | 'error';
 
+/* Thin beni-red vertical sep */
+function Kiri() {
+  return (
+    <span
+      aria-hidden
+      style={{
+        display: 'inline-block',
+        width: '1px',
+        height: '14px',
+        background: 'var(--rule)',
+        verticalAlign: 'middle',
+        margin: '0 12px',
+        flexShrink: 0,
+      }}
+    />
+  );
+}
+
 export default function GamePage() {
   const router = useRouter();
   const canvasRef = useRef<CanvasHandle>(null);
 
   // Game state (from localStorage)
-  const [level, setLevel]       = useState(1);
-  const [difficulty, setDiff]   = useState<Difficulty>('normal');
-  const [lang, setLang]         = useState<Language>('zh');
+  const [level, setLevel]     = useState(1);
+  const [difficulty, setDiff] = useState<Difficulty>('normal');
+  const [lang, setLang]       = useState<Language>('zh');
 
   // Tool state
-  const [tool, setTool]               = useState<'brush' | 'eraser' | 'fill'>('brush');
-  const [brushStyle, setBrushStyle]   = useState<BrushStyle>('normal');
-  const [color, setColor]             = useState('#1a1a24');
-  const [size, setSize]               = useState(6);
+  const [tool, setTool]             = useState<'brush' | 'eraser' | 'fill'>('brush');
+  const [brushStyle, setBrushStyle] = useState<BrushStyle>('normal');
+  const [color, setColor]           = useState('#1a1a24');
+  const [size, setSize]             = useState(6);
 
   // Round state
-  const [phase, setPhase]     = useState<Phase>('loading');
-  const [prompt, setPrompt]   = useState('');
-  const [token, setToken]     = useState('');
-  const [timedOut, setTimedOut] = useState(false);
-  const [errorMsg, setErrorMsg] = useState('');
+  const [phase, setPhase]             = useState<Phase>('loading');
+  const [prompt, setPrompt]           = useState('');
+  const [token, setToken]             = useState('');
+  const [timedOut, setTimedOut]       = useState(false);
+  const [errorMsg, setErrorMsg]       = useState('');
+  const [showGiveUpDialog, setShowGiveUpDialog] = useState(false);
 
-  // Sync refs so submit callback can read current values without stale closure
-  const phaseRef    = useRef<Phase>('loading');
-  const tokenRef    = useRef('');
-  const diffRef     = useRef<Difficulty>('normal');
-  const langRef     = useRef<Language>('zh');
-  useEffect(() => { phaseRef.current = phase; }, [phase]);
-  useEffect(() => { tokenRef.current = token; }, [token]);
-  useEffect(() => { diffRef.current = difficulty; }, [difficulty]);
-  useEffect(() => { langRef.current = lang; }, [lang]);
+  // Sync refs — keep submit callback stable without stale closures
+  const phaseRef = useRef<Phase>('loading');
+  const tokenRef = useRef('');
+  const diffRef  = useRef<Difficulty>('normal');
+  const langRef  = useRef<Language>('zh');
+  useEffect(() => { phaseRef.current = phase; },      [phase]);
+  useEffect(() => { tokenRef.current = token; },      [token]);
+  useEffect(() => { diffRef.current  = difficulty; }, [difficulty]);
+  useEffect(() => { langRef.current  = lang; },       [lang]);
 
-  // ── Init ──────────────────────────────────────────────
+  // ── Init ────────────────────────────────────────────
   useEffect(() => {
     const state = getGameState();
     setLevel(state.level);
@@ -72,7 +91,7 @@ export default function GamePage() {
     }
   }
 
-  // ── Submit ────────────────────────────────────────────
+  // ── Submit ──────────────────────────────────────────
   const submit = useCallback(async (expired = false) => {
     if (phaseRef.current !== 'drawing') return;
     setTimedOut(expired);
@@ -87,8 +106,8 @@ export default function GamePage() {
         body: JSON.stringify({
           imageBase64,
           promptToken: tokenRef.current,
-          difficulty: diffRef.current,
-          language: langRef.current,
+          difficulty:  diffRef.current,
+          language:    langRef.current,
         }),
       });
 
@@ -104,10 +123,7 @@ export default function GamePage() {
       }
 
       const result = await res.json();
-      setSessionState({
-        lastResult: { ...result, timedOut: expired },
-        lastImageBase64: imageBase64,
-      });
+      setSessionState({ lastResult: { ...result, timedOut: expired }, lastImageBase64: imageBase64 });
       router.push('/result');
     } catch {
       setPhase('error');
@@ -118,42 +134,104 @@ export default function GamePage() {
   const onTimerExpire = useCallback(() => submit(true), [submit]);
 
   return (
-    <div className="flex flex-col h-screen bg-stone-50 font-sans">
+    <div className="flex flex-col h-screen" style={{ background: 'var(--bg)' }}>
 
-      {/* Top bar */}
-      <header className="flex items-center justify-between px-4 py-2 border-b border-stone-200 bg-white shrink-0">
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-stone-400 uppercase tracking-widest">
-            {t(lang, 'game.level')} {level}
-          </span>
-          {phase === 'drawing' && (
-            <span className="text-sm font-medium text-stone-800 max-w-[50ch] truncate">
+      {/* ── Header ────────────────────────────────── */}
+      <header
+        className="beni-bar relative shrink-0 flex items-center justify-between px-6"
+        style={{
+          height: '62px',
+          background: 'var(--surface)',
+          borderBottom: '0.5px solid var(--rule)',
+        }}
+      >
+        {/* Left: level badge + prompt */}
+        <div className="flex items-center min-w-0 flex-1">
+
+          {/* Level — Japanese-style */}
+          <div className="shrink-0 flex items-center gap-1.5">
+            <span
+              className="font-shippori"
+              style={{ fontSize: '12px', letterSpacing: '0.18em', color: 'var(--beni)' }}
+            >
+              {lang === 'zh' ? '第' : 'Lv.'}
+            </span>
+            <span
+              className="font-cormorant"
+              style={{ fontSize: '1.4rem', lineHeight: 1, color: 'var(--beni)', fontWeight: 400 }}
+            >
+              {level}
+            </span>
+            {lang === 'zh' && (
+              <span
+                className="font-shippori"
+                style={{ fontSize: '12px', letterSpacing: '0.18em', color: 'var(--beni)' }}
+              >
+                関
+              </span>
+            )}
+          </div>
+
+          <Kiri />
+
+          {/* Prompt / status text */}
+          {(phase === 'drawing' || phase === 'submitting') && prompt && (
+            <span
+              className="font-shippori truncate"
+              style={{
+                fontSize: '0.95rem',
+                color: 'var(--ink)',
+                letterSpacing: '0.06em',
+                lineHeight: 1.4,
+              }}
+            >
               {prompt}
             </span>
           )}
+
           {phase === 'loading' && (
-            <span className="text-sm text-stone-400 italic">{t(lang, 'game.loading')}</span>
+            <span
+              className="font-cormorant italic animate-loading-pulse"
+              style={{ fontSize: '1rem', color: 'var(--ink-3)' }}
+            >
+              {t(lang, 'game.loading')}
+            </span>
           )}
+
           {phase === 'submitting' && (
-            <span className="text-sm text-stone-400 italic">{t(lang, 'game.scoring')}</span>
+            <>
+              <Kiri />
+              <span
+                className="font-cormorant italic animate-loading-pulse shrink-0"
+                style={{ fontSize: '1rem', color: 'var(--ink-2)' }}
+              >
+                {t(lang, 'game.scoring')}
+              </span>
+            </>
           )}
         </div>
-        <div className="flex items-center gap-3">
-          {phase === 'drawing' && (
-            <Timer durationSeconds={180} onExpire={onTimerExpire} paused={phase !== 'drawing'} />
-          )}
+
+        {/* Right: timer + timed-out */}
+        <div className="flex items-center gap-5 shrink-0 ml-4">
           {timedOut && (
-            <span className="text-xs text-amber-600">{t(lang, 'game.timedOut')}</span>
+            <span
+              className="font-shippori"
+              style={{ fontSize: '12px', letterSpacing: '0.12em', color: '#a07830' }}
+            >
+              {t(lang, 'game.timedOut')}
+            </span>
+          )}
+          {phase === 'drawing' && (
+            <Timer durationSeconds={90} onExpire={onTimerExpire} paused={phase !== 'drawing'} />
           )}
         </div>
       </header>
 
-      {/* Main area */}
+      {/* ── Main: toolbar + canvas ────────────────── */}
       <div className="flex flex-1 overflow-hidden">
 
-        {/* Toolbar */}
         <Toolbar
-          tool={tool} brushStyle={brushStyle} color={color} size={size}
+          tool={tool} brushStyle={brushStyle} color={color} size={size} lang={lang}
           onToolChange={setTool}
           onBrushStyleChange={setBrushStyle}
           onColorChange={setColor}
@@ -163,20 +241,86 @@ export default function GamePage() {
           onClear={() => canvasRef.current?.clear()}
         />
 
-        {/* Canvas */}
-        <div className="flex-1 flex items-center justify-center bg-stone-100 p-4 overflow-hidden">
+        {/* Canvas area — washi dot-grid ground */}
+        <div
+          className="flex-1 flex items-center justify-center overflow-hidden washi-grid"
+          style={{ padding: '28px' }}
+        >
           {phase === 'error' ? (
-            <div className="text-center space-y-4">
-              <p className="text-stone-600 text-sm">{errorMsg}</p>
+            <div className="text-center" style={{ maxWidth: '360px' }}>
+              {/* Decorative kanji 失敗 error feel */}
+              <p
+                className="font-shippori"
+                style={{
+                  fontSize: '0.82rem',
+                  letterSpacing: '0.25em',
+                  color: 'var(--beni)',
+                  marginBottom: '14px',
+                  textTransform: 'uppercase',
+                }}
+              >
+                エラー
+              </p>
+              <p
+                className="font-cormorant italic"
+                style={{ fontSize: '1.1rem', color: 'var(--ink-2)', marginBottom: '32px', lineHeight: 1.7 }}
+              >
+                {errorMsg}
+              </p>
               <button
-                className="px-6 py-2 border border-stone-700 text-stone-700 text-sm hover:bg-stone-700 hover:text-white transition-colors"
                 onClick={() => fetchPrompt(level, difficulty, lang)}
+                style={{
+                  color: 'var(--beni)',
+                  border: '1px solid var(--beni)',
+                  background: 'transparent',
+                  padding: '10px 36px',
+                  fontFamily: 'var(--font-cormorant)',
+                  fontSize: '1.1rem',
+                  letterSpacing: '0.1em',
+                  cursor: 'pointer',
+                  borderRadius: '2px',
+                  transition: 'all 0.15s',
+                }}
+                onMouseEnter={e => {
+                  (e.currentTarget as HTMLElement).style.background = 'var(--beni)';
+                  (e.currentTarget as HTMLElement).style.color = 'var(--surface)';
+                }}
+                onMouseLeave={e => {
+                  (e.currentTarget as HTMLElement).style.background = 'transparent';
+                  (e.currentTarget as HTMLElement).style.color = 'var(--beni)';
+                }}
               >
                 {t(lang, 'result.newRound')}
               </button>
             </div>
           ) : (
-            <div className="w-full max-w-[800px] aspect-[4/3] shadow-sm border border-stone-200">
+            /* Canvas card — paper sheet on washi ground */
+            <div
+              className="w-full max-w-[800px] aspect-[4/3] relative"
+              style={{
+                boxShadow: '0 2px 8px oklch(13% 0.018 258 / 0.08), 0 12px 40px oklch(13% 0.018 258 / 0.12)',
+                border: '0.5px solid var(--rule)',
+              }}
+            >
+              {/* Corner marks — like manuscript paper registration marks */}
+              {(['top-0 left-0', 'top-0 right-0', 'bottom-0 left-0', 'bottom-0 right-0'] as const).map((pos, i) => (
+                <div
+                  key={i}
+                  className={`absolute ${pos} w-4 h-4 pointer-events-none`}
+                  style={{ zIndex: 2 }}
+                >
+                  <svg
+                    viewBox="0 0 16 16" fill="none"
+                    style={{
+                      width: '16px', height: '16px',
+                      transform: `rotate(${i * 90}deg)`,
+                    }}
+                  >
+                    <path d="M1 15 L1 1 L15 1" stroke="var(--beni)" strokeWidth="1.2" strokeLinecap="round" opacity="0.45"/>
+                  </svg>
+                </div>
+              ))}
+
               <Canvas
                 ref={canvasRef}
                 brushStyle={brushStyle}
@@ -190,16 +334,147 @@ export default function GamePage() {
         </div>
       </div>
 
-      {/* Submit bar */}
+      {/* ── Submit footer ─────────────────────────── */}
       {phase === 'drawing' && (
-        <footer className="flex justify-end px-6 py-3 border-t border-stone-200 bg-white shrink-0">
+        <footer
+          className="shrink-0 flex items-center justify-between px-6 py-4"
+          style={{
+            background: 'var(--surface)',
+            borderTop: '0.5px solid var(--rule)',
+          }}
+        >
+          {/* Left: give up button */}
           <button
-            className="px-8 py-2 bg-red-700 text-white text-sm font-medium tracking-wide hover:bg-red-800 transition-colors"
+            onClick={() => setShowGiveUpDialog(true)}
+            className="font-cormorant tracking-[0.1em]"
+            style={{
+              color: 'var(--ink-3)',
+              border: '1px solid var(--rule)',
+              background: 'transparent',
+              padding: '10px 24px',
+              fontSize: '1rem',
+              borderRadius: '2px',
+              cursor: 'pointer',
+              transition: 'all 0.15s',
+            }}
+            onMouseEnter={e => {
+              (e.currentTarget as HTMLElement).style.color = 'var(--ink)';
+              (e.currentTarget as HTMLElement).style.borderColor = 'var(--ink-3)';
+            }}
+            onMouseLeave={e => {
+              (e.currentTarget as HTMLElement).style.color = 'var(--ink-3)';
+              (e.currentTarget as HTMLElement).style.borderColor = 'var(--rule)';
+            }}
+          >
+            {t(lang, 'game.giveUp')}
+          </button>
+
+          {/* Right: submit button */}
+          <button
             onClick={() => submit(false)}
+            className="group flex items-center gap-2 font-cormorant tracking-[0.12em] transition-colors"
+            style={{
+              color: 'var(--beni)',
+              border: '1px solid var(--beni)',
+              background: 'transparent',
+              padding: '10px 36px',
+              fontSize: '1.15rem',
+              borderRadius: '2px',
+              cursor: 'pointer',
+              transition: 'all 0.15s',
+            }}
+            onMouseEnter={e => {
+              (e.currentTarget as HTMLElement).style.background = 'var(--beni)';
+              (e.currentTarget as HTMLElement).style.color = 'var(--surface)';
+            }}
+            onMouseLeave={e => {
+              (e.currentTarget as HTMLElement).style.background = 'transparent';
+              (e.currentTarget as HTMLElement).style.color = 'var(--beni)';
+            }}
           >
             {t(lang, 'game.submit')}
+            <span style={{ transition: 'transform 0.15s', display: 'inline-block' }}>→</span>
           </button>
         </footer>
+      )}
+
+      {/* ── Give up confirmation dialog ────────────── */}
+      {showGiveUpDialog && (
+        <div
+          className="fixed inset-0 flex items-center justify-center"
+          style={{ background: 'oklch(13% 0.018 258 / 0.45)', zIndex: 50 }}
+          onClick={() => setShowGiveUpDialog(false)}
+        >
+          <div
+            className="flex flex-col items-center"
+            style={{
+              background: 'var(--surface)',
+              border: '0.5px solid var(--rule)',
+              padding: '40px 48px',
+              maxWidth: '360px',
+              width: '90%',
+              boxShadow: '0 8px 40px oklch(13% 0.018 258 / 0.18)',
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <p
+              className="font-shippori text-center"
+              style={{
+                fontSize: '0.9rem',
+                color: 'var(--ink-2)',
+                letterSpacing: '0.08em',
+                lineHeight: 1.8,
+                marginBottom: '32px',
+              }}
+            >
+              {t(lang, 'game.giveUp.confirm')}
+            </p>
+            <div className="flex gap-3 w-full">
+              <button
+                onClick={() => setShowGiveUpDialog(false)}
+                className="flex-1 font-cormorant tracking-[0.1em]"
+                style={{
+                  color: 'var(--ink-2)',
+                  border: '1px solid var(--rule)',
+                  background: 'transparent',
+                  padding: '10px 0',
+                  fontSize: '1rem',
+                  borderRadius: '2px',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s',
+                }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--ink-3)'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--rule)'; }}
+              >
+                {t(lang, 'game.giveUp.no')}
+              </button>
+              <button
+                onClick={() => router.push('/')}
+                className="flex-1 font-cormorant tracking-[0.1em]"
+                style={{
+                  color: 'var(--beni)',
+                  border: '1px solid var(--beni)',
+                  background: 'transparent',
+                  padding: '10px 0',
+                  fontSize: '1rem',
+                  borderRadius: '2px',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s',
+                }}
+                onMouseEnter={e => {
+                  (e.currentTarget as HTMLElement).style.background = 'var(--beni)';
+                  (e.currentTarget as HTMLElement).style.color = 'var(--surface)';
+                }}
+                onMouseLeave={e => {
+                  (e.currentTarget as HTMLElement).style.background = 'transparent';
+                  (e.currentTarget as HTMLElement).style.color = 'var(--beni)';
+                }}
+              >
+                {t(lang, 'game.giveUp.yes')}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -56,6 +56,14 @@ export function getPastWorks(): PastWork[] {
   }
 }
 
+export function deletePastWork(id: string): void {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    const works = getPastWorks().filter(w => w.id !== id);
+    localStorage.setItem('pastWorks', JSON.stringify(works));
+  } catch { /* storage full */ }
+}
+
 export function addPastWork(work: Omit<PastWork, 'id' | 'timestamp'>): void {
   if (typeof localStorage === 'undefined') return;
   try {

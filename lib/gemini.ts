@@ -1,8 +1,8 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 import type { Difficulty, Language } from './types';
 
 function getGenAI() {
-  return new GoogleGenerativeAI(process.env.GEMINI_API_KEY ?? '');
+  return new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY ?? '' });
 }
 
 const TIMEOUT_MS = 8000;
@@ -12,7 +12,7 @@ async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
     return await fn();
   } catch (err) {
     if (err instanceof Error && err.message.includes('429')) {
-      await new Promise(r => setTimeout(r, 2000));
+      await new Promise(r => setTimeout(r, 5000));
       return fn(); // retry once
     }
     throw err;
@@ -43,7 +43,7 @@ export async function generatePrompt(
   difficulty: Difficulty,
   language: Language,
 ): Promise<string> {
-  const model = getGenAI().getGenerativeModel({ model: 'gemini-2.0-flash' });
+  const ai = getGenAI();
   const langNote = language === 'zh' ? 'Respond in simplified Chinese.' : 'Respond in English.';
 
   const userPrompt = `You are a creative drawing game prompt generator.
@@ -55,7 +55,13 @@ Rules: Be fun and creative. Avoid political figures, sexual content, graphic vio
 Return ONLY the prompt text — no explanations, no quotes, no punctuation at the end.`;
 
   return withRetry(() =>
-    withTimeout(() => model.generateContent(userPrompt).then(r => r.response.text().trim()))
+    withTimeout(async () => {
+      const result = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: userPrompt,
+      });
+      return result.text?.trim() ?? '';
+    })
   );
 }
 
@@ -64,7 +70,7 @@ export async function scoreDrawing(
   prompt: string,
   language: Language,
 ): Promise<{ score: number; comment: string }> {
-  const model = getGenAI().getGenerativeModel({ model: 'gemini-2.0-flash' });
+  const ai = getGenAI();
   const langNote = language === 'zh' ? 'Write your comment in simplified Chinese.' : 'Write your comment in English.';
   const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, '');
 
@@ -77,11 +83,16 @@ Respond with ONLY valid JSON (no markdown): {"score": <integer>, "comment": "<st
 
   return withRetry(() =>
     withTimeout(async () => {
-      const result = await model.generateContent([
-        systemPrompt,
-        { inlineData: { mimeType: 'image/png', data: base64Data } },
-      ]);
-      const text = result.response.text().trim();
+      const result = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: [
+          { role: 'user', parts: [
+            { text: systemPrompt },
+            { inlineData: { mimeType: 'image/png', data: base64Data } },
+          ]},
+        ],
+      });
+      const text = result.text?.trim() ?? '';
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (!jsonMatch) throw new Error('Gemini returned non-JSON response');
       const parsed = JSON.parse(jsonMatch[0]);

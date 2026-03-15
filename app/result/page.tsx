@@ -89,9 +89,9 @@ export default function ResultPage() {
         </p>
 
         {/* Score */}
-        <div className="text-center space-y-2">
+        <div className="text-center space-y-2 animate-score-reveal">
           {result.timedOut && (
-            <p className="text-sm text-amber-600 tracking-wide">{t(lang, 'result.timedOut')}</p>
+            <p className="text-sm tracking-wide" style={{ color: '#8a6a28' }}>{t(lang, 'result.timedOut')}</p>
           )}
           <div className="flex items-baseline justify-center gap-2">
             <span
@@ -111,7 +111,7 @@ export default function ResultPage() {
 
         {/* AI comment */}
         <p
-          className="font-cormorant italic text-center text-[1.1rem] leading-relaxed tracking-wide"
+          className="font-cormorant italic text-center text-[1.1rem] leading-relaxed tracking-wide animate-comment-reveal"
           style={{ color: 'var(--ink-2)' }}
         >
           &ldquo;{result.comment}&rdquo;

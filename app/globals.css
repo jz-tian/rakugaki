@@ -6,10 +6,11 @@
   --bg:           oklch(96.5% 0.012 74);
   --surface:      oklch(99%   0.004 74);
   --ink:          oklch(13%   0.018 258);
-  --ink-2:        oklch(42%   0.012 258);
-  --ink-3:        oklch(70%   0.008 258);
-  --rule:         oklch(84%   0.010 258);
+  --ink-2:        oklch(34%   0.014 258);
+  --ink-3:        oklch(54%   0.010 258);
+  --rule:         oklch(78%   0.010 258);
   --beni:         oklch(51%   0.210 27);
+  --beni-soft:    oklch(95%   0.018 27);
   --s-hi:         oklch(50%   0.160 152);
   --s-hi-bg:      oklch(93%   0.048 152);
   --s-mid:        oklch(58%   0.150 63);
@@ -23,8 +24,27 @@
   body { font-family: var(--font-dm), 'Noto Sans JP', sans-serif; }
 }
 
-.font-shippori { font-family: var(--font-shippori), serif; }
+.font-shippori  { font-family: var(--font-shippori), serif; }
 .font-cormorant { font-family: var(--font-cormorant), serif; }
+
+/* ── Washi dot-grid (manuscript paper feel) ─────── */
+.washi-grid {
+  background-color: var(--bg);
+  background-image: radial-gradient(circle, oklch(78% 0.010 74) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+/* ── Red accent hairline (traditional doc header) ── */
+.beni-bar::before {
+  content: '';
+  display: block;
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--beni);
+}
+
+/* ── Animations ─────────────────────────────────── */
 
 @keyframes bobDown {
   0%, 100% { transform: translateY(0); }
@@ -37,3 +57,49 @@
   to   { opacity: 1; transform: translateY(0); }
 }
 .animate-fadeup { animation: fadeUp 0.5s ease both; }
+
+/* Score stamps in like a hanko seal pressed to paper */
+@keyframes stampIn {
+  0%   { opacity: 0; transform: scale(2.4) rotate(-6deg); filter: blur(5px); }
+  55%  { opacity: 1; filter: blur(0); transform: scale(0.92) rotate(-2.5deg); }
+  72%  { transform: scale(1.05) rotate(-2deg); }
+  100% { transform: scale(1) rotate(-2deg); opacity: 1; }
+}
+.animate-stamp { animation: stampIn 0.5s cubic-bezier(0.34, 1.4, 0.64, 1) forwards; }
+
+@keyframes scoreReveal {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-score-reveal {
+  animation: scoreReveal 0.65s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation-delay: 0.2s;
+  opacity: 0;
+}
+
+@keyframes commentReveal {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-comment-reveal {
+  animation: commentReveal 0.6s ease forwards;
+  animation-delay: 0.65s;
+  opacity: 0;
+}
+
+@keyframes pulseOpacity {
+  0%, 100% { opacity: 0.35; }
+  50%       { opacity: 0.8; }
+}
+.animate-loading-pulse { animation: pulseOpacity 1.4s ease-in-out infinite; }
+
+/* Timer urgent pulse */
+@keyframes timerUrgent {
+  0%, 100% { transform: scale(1);    opacity: 1; }
+  50%       { transform: scale(1.06); opacity: 0.85; }
+}
+.animate-timer-urgent { animation: timerUrgent 0.85s ease-in-out infinite; }
+
+/* Toolbar scrollbar suppression */
+.toolbar-scroll::-webkit-scrollbar { display: none; }
+.toolbar-scroll { scrollbar-width: none; }
