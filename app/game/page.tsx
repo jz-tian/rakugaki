@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Canvas, { CanvasHandle, BrushStyle } from '@/components/Canvas';
 import Toolbar from '@/components/Toolbar';
 import Timer from '@/components/Timer';
-import { getGameState, getSessionState, setSessionState } from '@/lib/storage';
+import { getGameState, setSessionState } from '@/lib/storage';
 import { t } from '@/lib/i18n';
 import type { Language, Difficulty } from '@/lib/types';
 
@@ -32,6 +32,16 @@ export default function GamePage() {
   const [token, setToken]     = useState('');
   const [timedOut, setTimedOut] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Sync refs so submit callback can read current values without stale closure
+  const phaseRef    = useRef<Phase>('loading');
+  const tokenRef    = useRef('');
+  const diffRef     = useRef<Difficulty>('normal');
+  const langRef     = useRef<Language>('zh');
+  useEffect(() => { phaseRef.current = phase; }, [phase]);
+  useEffect(() => { tokenRef.current = token; }, [token]);
+  useEffect(() => { diffRef.current = difficulty; }, [difficulty]);
+  useEffect(() => { langRef.current = lang; }, [lang]);
 
   // ── Init ──────────────────────────────────────────────
   useEffect(() => {
@@ -64,7 +74,7 @@ export default function GamePage() {
 
   // ── Submit ────────────────────────────────────────────
   const submit = useCallback(async (expired = false) => {
-    if (phase !== 'drawing') return;
+    if (phaseRef.current !== 'drawing') return;
     setTimedOut(expired);
     setPhase('submitting');
 
@@ -74,18 +84,22 @@ export default function GamePage() {
       const res = await fetch('/api/score', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageBase64, promptToken: token, difficulty, language: lang }),
+        body: JSON.stringify({
+          imageBase64,
+          promptToken: tokenRef.current,
+          difficulty: diffRef.current,
+          language: langRef.current,
+        }),
       });
 
       if (res.status === 400) {
-        // Token expired/invalid — prompt player to restart
         setPhase('error');
-        setErrorMsg(t(lang, 'result.expired'));
+        setErrorMsg(t(langRef.current, 'result.expired'));
         return;
       }
       if (!res.ok) {
         setPhase('error');
-        setErrorMsg(t(lang, res.status === 503 ? 'error.serviceBusy' : 'error.unknown'));
+        setErrorMsg(t(langRef.current, res.status === 503 ? 'error.serviceBusy' : 'error.unknown'));
         return;
       }
 
@@ -97,9 +111,9 @@ export default function GamePage() {
       router.push('/result');
     } catch {
       setPhase('error');
-      setErrorMsg(t(lang, 'error.unknown'));
+      setErrorMsg(t(langRef.current, 'error.unknown'));
     }
-  }, [phase, token, difficulty, lang, router]);
+  }, [router]);
 
   const onTimerExpire = useCallback(() => submit(true), [submit]);
 
