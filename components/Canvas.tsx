@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect, useImperativeHandle, forwardRef } from 'react';
+import { useRef, useEffect, useImperativeHandle, forwardRef, useCallback } from 'react';
 
 export type BrushStyle = 'normal' | 'pencil' | 'ink';
 
@@ -46,6 +46,13 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(
     useEffect(() => { colorRef.current = color; }, [color]);
     useEffect(() => { sizeRef.current = size; }, [size]);
 
+    // Refs for stable undo/redo in keyboard handler (Fix 2)
+    const undoRef = useRef<() => void>(() => {});
+    const redoRef = useRef<() => void>(() => {});
+
+    // Persistent color-parser canvas (Fix 4)
+    const colorParserRef = useRef<CanvasRenderingContext2D | null>(null);
+
     // ── Init canvas ───────────────────────────────────────
     useEffect(() => {
       const canvas = canvasRef.current!;
@@ -56,11 +63,17 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(
     }, []);
 
     // ── Keyboard shortcuts ─────────────────────────────────
+    // Keep undoRef/redoRef current every render (Fix 2)
+    useEffect(() => {
+      undoRef.current = undo;
+      redoRef.current = redo;
+    });
+
     useEffect(() => {
       const handler = (e: KeyboardEvent) => {
         if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
           e.preventDefault();
-          if (e.shiftKey) redo(); else undo();
+          if (e.shiftKey) redoRef.current(); else undoRef.current();
         }
       };
       window.addEventListener('keydown', handler);
@@ -75,10 +88,10 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(
       clear() {
         const ctx = canvasRef.current?.getContext('2d');
         if (!ctx) return;
-        saveSnapshot();
+        saveSnapshot(); // save pre-clear state for undo
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-        saveSnapshot();
+        // do NOT call saveSnapshot() again here (Fix 3)
       },
       undo,
       redo,
@@ -165,19 +178,23 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(
     }
 
     // ── Flood fill (BFS scanline) ──────────────────────────
-    function floodFill(startX: number, startY: number, fillColor: string) {
+    function floodFill(startX: number, startY: number) {
       const canvas = canvasRef.current!;
       const ctx = canvas.getContext('2d')!;
       const imageData = ctx.getImageData(0, 0, CANVAS_W, CANVAS_H);
       const data = imageData.data;
 
-      // Parse fill color
-      const temp = document.createElement('canvas');
-      const tCtx = temp.getContext('2d')!;
-      tCtx.fillStyle = fillColor;
-      tCtx.fillRect(0, 0, 1, 1);
-      const fillPixel = tCtx.getImageData(0, 0, 1, 1).data;
-      const fr = fillPixel[0], fg = fillPixel[1], fb = fillPixel[2], fa = fillPixel[3];
+      // Parse fill color using persistent canvas (Fix 4)
+      if (!colorParserRef.current) {
+        const c = document.createElement('canvas');
+        c.width = 1; c.height = 1;
+        colorParserRef.current = c.getContext('2d')!;
+      }
+      const parser = colorParserRef.current;
+      parser.fillStyle = colorRef.current;
+      parser.fillRect(0, 0, 1, 1);
+      const fill = parser.getImageData(0, 0, 1, 1).data;
+      const fr = fill[0], fg = fill[1], fb = fill[2], fa = fill[3];
 
       const idx = (startY * CANVAS_W + startX) * 4;
       const tr = data[idx], tg = data[idx + 1], tb = data[idx + 2], ta = data[idx + 3];
@@ -230,7 +247,7 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(
 
       if (toolRef.current === 'fill') {
         saveSnapshot();
-        floodFill(Math.round(pt.x), Math.round(pt.y), colorRef.current);
+        floodFill(Math.round(pt.x), Math.round(pt.y));
         saveSnapshot();
         return;
       }
@@ -258,10 +275,20 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(
       lastTimeRef.current = e.timeStamp;
     }
 
-    function onPointerUp() {
+    // Fix 1: release pointer capture on up/leave
+    const onPointerUp = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
+      if (!drawingRef.current) return;
+      e.currentTarget.releasePointerCapture(e.pointerId);
       drawingRef.current = false;
       lastPosRef.current = null;
-    }
+    }, []);
+
+    const onPointerLeave = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
+      if (!drawingRef.current) return;
+      e.currentTarget.releasePointerCapture(e.pointerId);
+      drawingRef.current = false;
+      lastPosRef.current = null;
+    }, []);
 
     return (
       <canvas
@@ -272,7 +299,7 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
-        onPointerLeave={onPointerUp}
+        onPointerLeave={onPointerLeave}
       />
     );
   });
