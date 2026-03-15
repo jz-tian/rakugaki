@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>落書き — AI Drawing Judge</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' fill='none'%3E%3Crect width='32' height='32' rx='6' fill='%23f5f0e8'/%3E%3Crect x='13' y='2' width='6' height='14' rx='2' fill='%23D4AA50' stroke='%231a1a24' stroke-width='0.8'/%3E%3Crect x='11.5' y='7' width='9' height='2' rx='1' fill='%23A07828'/%3E%3Crect x='11.5' y='12' width='9' height='2' rx='1' fill='%23A07828'/%3E%3Crect x='11' y='16' width='10' height='4' rx='1' fill='%23B54028' stroke='%231a1a24' stroke-width='0.8'/%3E%3Cpath d='M11 20 Q9 23 11.5 26 Q13.5 29 16 30 Q18.5 29 20.5 26 Q23 23 21 20Z' fill='%231a1a24'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@400;500;700&family=Noto+Sans+JP:wght@300;400;500&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:          oklch(96.5% 0.012 74);
+      --surface:     oklch(99%   0.004 74);
+      --ink:         oklch(13%   0.018 258);
+      --ink-2:       oklch(42%   0.012 258);
+      --ink-3:       oklch(70%   0.008 258);
+      --rule:        oklch(84%   0.010 258);
+      --rule-light:  oklch(90%   0.007 258);
+      --beni:        oklch(51%   0.210 27);
+      --beni-dim:    oklch(68%   0.130 27);
+      --s-hi:        oklch(50%   0.160 152);
+      --s-hi-bg:     oklch(93%   0.048 152);
+      --s-mid:       oklch(58%   0.150 63);
+      --s-mid-bg:    oklch(93%   0.052 63);
+      --s-lo:        oklch(50%   0.185 27);
+      --s-lo-bg:     oklch(93%   0.048 27);
+    }
+
+    html { font-size: 16px; scroll-behavior: smooth; }
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: 'DM Sans', 'Noto Sans JP', sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── HEADER ───────────────────────────────────────────── */
+    .header {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 200;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.4rem clamp(2rem, 6vw, 5rem);
+      /* No border — let it float */
+    }
+
+    .logo {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      text-decoration: none;
+      gap: 0.6rem;
+    }
+    .logo-brush-icon {
+      height: 38px;
+      width: auto;
+      flex-shrink: 0;
+    }
+    .logo-text {
+      display: flex;
+      flex-direction: column;
+      gap: 0.1rem;
+      line-height: 1;
+    }
+    .logo-jp {
+      font-family: 'Shippori Mincho B1', serif;
+      font-weight: 700;
+      font-size: 1.1rem;
+      letter-spacing: 0.1em;
+      color: var(--ink);
+    }
+    .logo-en {
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic;
+      font-weight: 300;
+      font-size: 0.62rem;
+      letter-spacing: 0.2em;
+      color: var(--ink-3);
+    }
+
+    .header-right { display: flex; align-items: center; gap: 1rem; }
+
+    .level-tag {
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
+      color: var(--ink-2);
+      padding: 0.28rem 0.75rem;
+      border: 0.5px solid var(--rule);
+      border-radius: 2px;
+      background: color-mix(in oklch, var(--bg) 85%, transparent);
+      backdrop-filter: blur(8px);
+    }
+    .level-tag b { color: var(--ink); font-weight: 500; }
+
+    .lang-toggle {
+      display: flex;
+      border: 0.5px solid var(--rule);
+      border-radius: 2px;
+      overflow: hidden;
+      background: color-mix(in oklch, var(--bg) 85%, transparent);
+      backdrop-filter: blur(8px);
+    }
+    .lang-btn {
+      padding: 0.28rem 0.7rem;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.72rem;
+      font-weight: 400;
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      color: var(--ink-2);
+      transition: background 0.12s, color 0.12s;
+      border-right: 0.5px solid var(--rule);
+    }
+    .lang-btn:last-child { border-right: none; }
+    .lang-btn.active { background: var(--ink); color: var(--bg); }
+
+    /* ── HERO ─────────────────────────────────────────────── */
+    .hero {
+      min-height: 100svh;
+      display: flex;
+      flex-direction: column;
+      padding: 0 clamp(2rem, 6vw, 5rem);
+    }
+
+    /* two-column center area */
+    .hero-body {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: clamp(2rem, 5vw, 5rem);
+      align-items: center;
+      padding-top: 6rem;
+      padding-bottom: 2rem;
+      max-width: 1080px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    /* — LEFT — */
+    .hero-left { display: flex; flex-direction: column; }
+
+    .hero-eyebrow {
+      font-family: 'Shippori Mincho B1', serif;
+      font-weight: 400;
+      font-size: 0.82rem;
+      letter-spacing: 0.22em;
+      color: var(--beni);
+      margin-bottom: clamp(1.25rem, 2.5vw, 2rem);
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .hero-eyebrow span { color: var(--beni-dim); }
+
+    .hero-title {
+      font-family: 'Shippori Mincho B1', serif;
+      font-weight: 700;
+      font-size: clamp(3.5rem, 6.5vw, 6rem);
+      line-height: 1.05;
+      letter-spacing: 0.05em;
+      color: var(--ink);
+    }
+    .hero-romanized {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 300;
+      font-size: clamp(1rem, 1.8vw, 1.5rem);
+      letter-spacing: 0.28em;
+      color: var(--ink-3);
+      margin-top: 0.4rem;
+      text-transform: uppercase;
+    }
+    .hero-tagline {
+      margin-top: clamp(1.5rem, 3vw, 2.5rem);
+      font-size: clamp(0.9rem, 1.2vw, 1.05rem);
+      font-weight: 300;
+      color: var(--ink-2);
+      line-height: 1.8;
+      max-width: 36ch;
+    }
+
+    /* Mini stats row (like the reference "617 · 16 · 27") */
+    .hero-stats {
+      margin-top: clamp(2rem, 4vw, 3rem);
+      display: flex;
+      gap: clamp(1.5rem, 3vw, 2.5rem);
+      align-items: flex-end;
+    }
+    .stat { display: flex; flex-direction: column; gap: 0.2rem; }
+    .stat-num {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 400;
+      font-size: clamp(1.8rem, 3vw, 2.6rem);
+      line-height: 1;
+      color: var(--ink);
+      letter-spacing: -0.01em;
+    }
+    .stat-label {
+      font-size: 0.65rem;
+      font-weight: 500;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--ink-3);
+    }
+
+    /* — RIGHT: BRUSH ILLUSTRATION — */
+    .hero-right {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .brush-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .brush-svg {
+      width: clamp(70px, 8vw, 108px);
+      height: auto;
+      max-height: 58vh;
+      filter: drop-shadow(3px 6px 18px oklch(0% 0 0 / 0.08));
+    }
+
+    /* ── CONTROLS BAR (bottom of hero) ───────────────────── */
+    .hero-controls {
+      border-top: 0.5px solid var(--rule);
+      padding: 1.6rem clamp(2rem, 6vw, 5rem) 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    /* centred unit: difficulty tabs + divider + start */
+    .controls-unit {
+      display: flex;
+      align-items: center;
+      gap: 2.5rem;
+    }
+
+    /* difficulty tabs */
+    .diff-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.45rem;
+    }
+    .diff-label {
+      font-size: 0.6rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--ink-3);
+    }
+    .diff-tabs { display: flex; align-items: center; gap: 0.2rem; }
+    .diff-sep  { color: var(--ink-3); font-size: 0.65rem; padding: 0 0.15rem; user-select: none; }
+
+    .diff-tab {
+      font-family: 'DM Sans', 'Noto Sans JP', sans-serif;
+      font-size: 0.88rem;
+      font-weight: 400;
+      color: var(--ink-3);
+      background: none;
+      border: none;
+      border-bottom: 1px solid transparent;
+      padding: 0.25rem 0.3rem 0.2rem;
+      cursor: pointer;
+      transition: color 0.12s, border-color 0.12s;
+      display: flex;
+      align-items: baseline;
+      gap: 0.22rem;
+      letter-spacing: 0.01em;
+    }
+    .diff-tab em {
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic;
+      font-weight: 300;
+      font-size: 0.72rem;
+      opacity: 0.45;
+    }
+    .diff-tab.active {
+      color: var(--ink);
+      font-weight: 500;
+      border-bottom-color: var(--ink);
+    }
+    .diff-tab:hover:not(.active) { color: var(--ink-2); }
+
+    /* thin vertical rule between diff and start */
+    .controls-divider {
+      width: 0.5px;
+      height: 2rem;
+      background: var(--rule);
+    }
+
+    /* start button — outlined, elegant */
+    .start-btn {
+      padding: 0.55rem 2rem;
+      background: transparent;
+      color: var(--beni);
+      border: 1px solid var(--beni);
+      border-radius: 2px;
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 400;
+      font-size: 1.05rem;
+      letter-spacing: 0.12em;
+      cursor: pointer;
+      transition: background 0.14s, color 0.14s;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      white-space: nowrap;
+    }
+    .start-btn:hover {
+      background: var(--beni);
+      color: oklch(98.5% 0.006 74);
+    }
+    .start-btn .btn-arrow {
+      font-size: 0.85rem;
+      transition: transform 0.14s;
+    }
+    .start-btn:hover .btn-arrow { transform: translateX(3px); }
+
+    /* scroll hint — absolute right edge */
+    .scroll-hint {
+      position: absolute;
+      right: clamp(2rem, 6vw, 5rem);
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic;
+      font-weight: 300;
+      font-size: 0.8rem;
+      letter-spacing: 0.1em;
+      color: var(--ink-3);
+      text-decoration: none;
+      transition: color 0.12s;
+    }
+    .scroll-hint:hover { color: var(--ink-2); }
+    .scroll-arrow {
+      display: inline-block;
+      animation: bobDown 2.2s ease-in-out infinite;
+      font-style: normal;
+    }
+    @keyframes bobDown {
+      0%, 100% { transform: translateY(0); }
+      50%       { transform: translateY(4px); }
+    }
+
+    /* ── GALLERY ──────────────────────────────────────────── */
+    #gallery {
+      padding: clamp(3rem, 6vw, 5rem) clamp(2rem, 6vw, 5rem) clamp(5rem, 10vw, 8rem);
+      border-top: 0.5px solid var(--rule);
+    }
+
+    .gallery-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-bottom: clamp(1.5rem, 3vw, 2.5rem);
+    }
+    .gallery-head-title {
+      display: flex;
+      flex-direction: column;
+      gap: 0.15rem;
+    }
+    .gallery-jp {
+      font-family: 'Shippori Mincho B1', serif;
+      font-weight: 500;
+      font-size: clamp(1.1rem, 2vw, 1.5rem);
+      letter-spacing: 0.1em;
+    }
+    .gallery-en {
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic;
+      font-weight: 300;
+      font-size: 0.78rem;
+      letter-spacing: 0.16em;
+      color: var(--ink-3);
+    }
+    .gallery-count { font-size: 0.73rem; color: var(--ink-3); letter-spacing: 0.06em; }
+
+    .gallery-rule { height: 0.5px; background: var(--rule); margin-bottom: clamp(1.5rem, 3vw, 2.5rem); }
+
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 1px;
+      background: var(--rule-light);
+      border: 0.5px solid var(--rule-light);
+    }
+
+    .card {
+      position: relative;
+      background: var(--surface);
+      cursor: pointer;
+      transition: background 0.14s;
+      overflow: hidden;
+    }
+    .card:hover { background: oklch(98.5% 0.004 74); }
+
+    .card-canvas {
+      width: 100%;
+      aspect-ratio: 4/3;
+      background: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.2rem;
+    }
+    .card-canvas svg { width: 100%; height: 100%; overflow: visible; }
+
+    .card-foot {
+      padding: 0.55rem 0.72rem 0.6rem;
+      border-top: 0.5px solid var(--rule-light);
+    }
+    .card-prompt {
+      font-size: 0.72rem;
+      color: var(--ink-2);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .card-prompt b { color: var(--ink); font-weight: 500; }
+
+    /* Hanko seal (square, rotated) */
+    .seal {
+      position: absolute;
+      top: 0.6rem; right: 0.6rem;
+      width: 2.6rem; height: 2.6rem;
+      border: 1.5px solid currentColor;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Shippori Mincho B1', serif;
+      font-weight: 700;
+      font-size: 0.82rem;
+      transform: rotate(4deg);
+    }
+    .seal.hi  { color: var(--s-hi);  background: var(--s-hi-bg);  }
+    .seal.mid { color: var(--s-mid); background: var(--s-mid-bg); }
+    .seal.lo  { color: var(--s-lo);  background: var(--s-lo-bg);  }
+
+    .lv-tag {
+      position: absolute;
+      top: 0.6rem; left: 0.6rem;
+      font-size: 0.63rem;
+      font-weight: 400;
+      letter-spacing: 0.08em;
+      color: oklch(90% 0.005 74);
+      background: oklch(18% 0.014 258 / 0.7);
+      padding: 0.16rem 0.45rem;
+      backdrop-filter: blur(4px);
+    }
+
+    .gallery-empty {
+      grid-column: 1/-1;
+      background: var(--surface);
+      padding: 5rem 2rem;
+      text-align: center;
+    }
+    .gallery-empty p {
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic;
+      font-weight: 300;
+      font-size: 0.95rem;
+      letter-spacing: 0.08em;
+      color: var(--ink-3);
+    }
+
+    /* ── ANIMATIONS ───────────────────────────────────────── */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .hero-left  { animation: fadeIn 0.6s ease both; }
+    .hero-right { animation: fadeIn 0.6s 0.1s ease both; }
+    .hero-controls { animation: fadeIn 0.5s 0.2s ease both; }
+    #gallery    { animation: fadeIn 0.5s 0.05s ease both; }
+
+    .card { animation: fadeIn 0.35s ease both; }
+    .card:nth-child(1){animation-delay:.18s}.card:nth-child(2){animation-delay:.22s}
+    .card:nth-child(3){animation-delay:.26s}.card:nth-child(4){animation-delay:.30s}
+    .card:nth-child(5){animation-delay:.34s}.card:nth-child(6){animation-delay:.38s}
+    .card:nth-child(7){animation-delay:.42s}.card:nth-child(8){animation-delay:.46s}
+
+    /* ── RESPONSIVE ───────────────────────────────────────── */
+    @media (max-width: 860px) {
+      .hero-body { grid-template-columns: 1fr; padding-top: 5.5rem; }
+      .hero-right { display: none; } /* hide brush on mobile to keep it clean */
+      .scroll-hint { margin-left: 0; }
+    }
+    @media (max-width: 540px) {
+      .header { padding: 1rem 1.25rem; }
+      .level-tag { display: none; }
+      .hero { padding: 0 1.25rem; }
+      .hero-controls { gap: 0.75rem; }
+      .start-btn { flex: 1; text-align: center; }
+      #gallery { padding: 2.5rem 1.25rem 5rem; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <a href="#" class="logo">
+    <!-- Mini brush icon for header -->
+    <svg class="logo-brush-icon" viewBox="0 0 30 96" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- Hanging loop -->
+      <path d="M13.5 4 Q13.5 1 15 0.5 Q16.5 1 16.5 4" stroke="#1a1a24" stroke-width="1.2" stroke-linecap="round"/>
+      <ellipse cx="15" cy="6" rx="5.5" ry="2.5" fill="#D4AA50" stroke="#1a1a24" stroke-width="1"/>
+      <!-- Handle body -->
+      <rect x="8" y="6" width="14" height="54" rx="2.5" fill="#D4AA50" stroke="#1a1a24" stroke-width="1"/>
+      <line x1="11.5" y1="10" x2="11.5" y2="58" stroke="#F0CC78" stroke-width="1" opacity="0.6"/>
+      <!-- Node rings -->
+      <rect x="6.5" y="24" width="17" height="2.5" rx="1.2" fill="#A07828" stroke="#1a1a24" stroke-width="0.8"/>
+      <rect x="6.5" y="40" width="17" height="2.5" rx="1.2" fill="#A07828" stroke="#1a1a24" stroke-width="0.8"/>
+      <rect x="6.5" y="54" width="17" height="2.5" rx="1.2" fill="#A07828" stroke="#1a1a24" stroke-width="0.8"/>
+      <!-- Ferrule -->
+      <rect x="6" y="60" width="18" height="9" rx="1.2" fill="#B54028" stroke="#1a1a24" stroke-width="1"/>
+      <line x1="6" y1="63.5" x2="24" y2="63.5" stroke="#8B2E18" stroke-width="0.6"/>
+      <line x1="6" y1="66.5" x2="24" y2="66.5" stroke="#8B2E18" stroke-width="0.6"/>
+      <!-- Bristle collar -->
+      <rect x="6" y="69" width="18" height="5" rx="0.8" fill="#1a1a24"/>
+      <!-- Bristles -->
+      <path d="M6 74 Q3.5 80 7 87 Q10 92 15 95 Q20 92 23 87 Q26.5 80 24 74Z" fill="#1a1a24"/>
+      <!-- Bristle lines -->
+      <path d="M10.5 75 Q9.5 83 11 90" stroke="#2c2c3c" stroke-width="0.7" stroke-linecap="round"/>
+      <path d="M15 75 Q15 84 15 92" stroke="#2c2c3c" stroke-width="0.7" stroke-linecap="round"/>
+      <path d="M19.5 75 Q20.5 83 19 90" stroke="#2c2c3c" stroke-width="0.7" stroke-linecap="round"/>
+    </svg>
+    <div class="logo-text">
+      <span class="logo-jp">落書き</span>
+      <span class="logo-en">rakugaki</span>
+    </div>
+  </a>
+  <div class="header-right">
+    <div class="level-tag" id="level-tag">Level <b>7</b></div>
+    <div class="lang-toggle">
+      <button class="lang-btn active" onclick="setLang('en')">EN</button>
+      <button class="lang-btn"        onclick="setLang('zh')">中文</button>
+    </div>
+  </div>
+</header>
+
+<!-- HERO (full screen) -->
+<section class="hero">
+  <div class="hero-body">
+
+    <!-- LEFT: text -->
+    <div class="hero-left">
+      <p class="hero-eyebrow" id="eyebrow">
+        落書き判定 <span>·</span> AI DRAWING JUDGE
+      </p>
+      <h1 class="hero-title">落書き</h1>
+      <p class="hero-romanized">RAKUGAKI</p>
+      <p class="hero-tagline" id="tagline">
+        Draw anything.<br>
+        Get judged by AI.<br>
+        Level up — or try again.
+      </p>
+
+      <!-- Stats row (like the reference) -->
+      <div class="hero-stats">
+        <div class="stat">
+          <span class="stat-num">∞</span>
+          <span class="stat-label" id="stat0-label">Levels</span>
+        </div>
+        <div class="stat">
+          <span class="stat-num">3</span>
+          <span class="stat-label" id="stat1-label">Difficulties</span>
+        </div>
+        <div class="stat">
+          <span class="stat-num">3'</span>
+          <span class="stat-label" id="stat2-label">Per Round</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: brush illustration -->
+    <div class="hero-right">
+      <div class="brush-wrap">
+        <!-- Hand-drawn Japanese calligraphy brush SVG -->
+        <svg class="brush-svg" viewBox="0 0 140 520" fill="none" xmlns="http://www.w3.org/2000/svg">
+
+          <!-- Hanging loop at top -->
+          <path d="M66 10 Q66 3 70 2 Q74 3 74 10" stroke="#1a1a24" stroke-width="1.8" stroke-linecap="round"/>
+          <!-- Cap ellipse -->
+          <ellipse cx="70" cy="16" rx="11" ry="5.5" fill="#D4A850" stroke="#1a1a24" stroke-width="1.5"/>
+          <!-- Cap top face -->
+          <ellipse cx="70" cy="12" rx="8" ry="3.5" fill="#E0B860" stroke="#1a1a24" stroke-width="1.3"/>
+
+          <!-- Handle body — main face -->
+          <rect x="48" y="16" width="44" height="248" rx="5" fill="#D4AA50" stroke="#1a1a24" stroke-width="1.6"/>
+          <!-- Handle — shadow side (right) -->
+          <path d="M90 20 L92 260 Q90 264 92 264 L92 20 Q91 17 90 17Z" fill="#B88C30" opacity="0.45"/>
+          <!-- Handle highlight -->
+          <line x1="56" y1="24" x2="56" y2="258" stroke="#F0CC78" stroke-width="2" stroke-linecap="round" opacity="0.7"/>
+          <!-- Secondary highlight -->
+          <line x1="60" y1="24" x2="60" y2="258" stroke="#F8DC98" stroke-width="0.8" stroke-linecap="round" opacity="0.3"/>
+
+          <!-- Bamboo node rings × 3 -->
+          <rect x="45" y="100" width="50" height="6" rx="3" fill="#A87828" stroke="#1a1a24" stroke-width="1.3"/>
+          <rect x="45" y="162" width="50" height="6" rx="3" fill="#A87828" stroke="#1a1a24" stroke-width="1.3"/>
+          <rect x="45" y="224" width="50" height="6" rx="3" fill="#A87828" stroke="#1a1a24" stroke-width="1.3"/>
+          <!-- Node shadow -->
+          <rect x="45" y="104" width="50" height="2" rx="1" fill="#8A6018" opacity="0.4"/>
+          <rect x="45" y="166" width="50" height="2" rx="1" fill="#8A6018" opacity="0.4"/>
+          <rect x="45" y="228" width="50" height="2" rx="1" fill="#8A6018" opacity="0.4"/>
+
+          <!-- Bottom ellipse of handle -->
+          <ellipse cx="70" cy="264" rx="22" ry="6" fill="#A87828" stroke="#1a1a24" stroke-width="1.4"/>
+
+          <!-- Ferrule (beni red lacquer band) -->
+          <rect x="45" y="264" width="50" height="30" rx="3" fill="#B54028" stroke="#1a1a24" stroke-width="1.6"/>
+          <!-- Ferrule shine/highlight -->
+          <line x1="49" y1="265" x2="49" y2="293" stroke="#D46048" stroke-width="2" stroke-linecap="round" opacity="0.55"/>
+          <!-- Ferrule texture bands -->
+          <line x1="45" y1="272" x2="95" y2="272" stroke="#8B2E18" stroke-width="0.9"/>
+          <line x1="45" y1="279" x2="95" y2="279" stroke="#8B2E18" stroke-width="0.9"/>
+          <line x1="45" y1="286" x2="95" y2="286" stroke="#8B2E18" stroke-width="0.9"/>
+          <!-- Ferrule bottom ellipse -->
+          <ellipse cx="70" cy="294" rx="25" ry="6" fill="#8B2E18" stroke="#1a1a24" stroke-width="1.3"/>
+
+          <!-- Bristle collar (dark band where bristles meet ferrule) -->
+          <rect x="44" y="296" width="52" height="18" rx="2" fill="#1a1a24"/>
+          <line x1="44" y1="306" x2="96" y2="306" stroke="#2e2e3e" stroke-width="1"/>
+
+          <!-- Bristle body — tapers from ~52px wide to point -->
+          <path d="
+            M 44 314
+            Q 38 335 44 380
+            Q 50 415 60 455
+            Q 65 475 70 500
+            Q 75 475 80 455
+            Q 90 415 96 380
+            Q 102 335 96 314
+            Z
+          " fill="#1a1a24"/>
+
+          <!-- Bristle texture lines (lighter, suggest individual hairs) -->
+          <path d="M 56 318 Q 53 358 56 408 Q 58 432 62 466" stroke="#2c2c3c" stroke-width="1.3" stroke-linecap="round" fill="none"/>
+          <path d="M 70 318 Q 70 362 70 412 Q 70 440 70 478" stroke="#2c2c3c" stroke-width="1.3" stroke-linecap="round" fill="none"/>
+          <path d="M 84 318 Q 87 358 84 408 Q 82 432 78 466" stroke="#2c2c3c" stroke-width="1.3" stroke-linecap="round" fill="none"/>
+
+          <!-- Ink at the tip — a small dark bead -->
+          <ellipse cx="70" cy="503" rx="6" ry="8" fill="#1a1a24"/>
+          <!-- Ink drip -->
+          <path d="M 69 511 Q 69 525 70 530 Q 71 525 71 511" fill="#1a1a24"/>
+
+          <!-- Floating ink drops (gives personality — ink just fell from the brush) -->
+          <ellipse cx="46" cy="550" rx="4" ry="5" fill="#1a1a24" opacity="0.65"/>
+          <path d="M 45 555 Q 45 562 46 564 Q 47 562 47 555" fill="#1a1a24" opacity="0.65"/>
+          <ellipse cx="38" cy="566" rx="2.5" ry="3" fill="#1a1a24" opacity="0.4"/>
+
+          <!-- Ink splash / brushstroke on "paper" — horizontal stroke under the tip -->
+          <!-- This suggests the brush has just touched paper -->
+          <path d="
+            M 20 543
+            Q 28 538 45 536
+            Q 62 534 78 537
+            Q 92 540 102 546
+            Q 94 552 78 555
+            Q 62 558 45 556
+            Q 28 554 20 549
+            Z
+          " fill="#1a1a24" opacity="0.88"/>
+          <!-- Stroke texture -->
+          <path d="M 28 538 Q 62 534 96 547" stroke="#1a1a24" stroke-width="0.7" fill="none" opacity="0.25"/>
+          <!-- Stroke bristle marks at left end (beginning of stroke) -->
+          <line x1="21" y1="540" x2="21" y2="551" stroke="#1a1a24" stroke-width="0.8" opacity="0.4"/>
+          <line x1="23" y1="538" x2="23" y2="553" stroke="#1a1a24" stroke-width="0.8" opacity="0.3"/>
+
+        </svg>
+      </div>
+    </div>
+  </div><!-- /hero-body -->
+
+  <!-- CONTROLS row at bottom of hero -->
+  <div class="hero-controls">
+    <div class="controls-unit">
+
+      <!-- Difficulty tabs -->
+      <div class="diff-wrap">
+        <span class="diff-label" id="diff-label">Difficulty</span>
+        <div class="diff-tabs" id="diff-tabs">
+          <button class="diff-tab"        onclick="setDiff('easy')"  >Easy   <em>60+</em></button>
+          <span class="diff-sep">·</span>
+          <button class="diff-tab active" onclick="setDiff('normal')">Normal <em>75+</em></button>
+          <span class="diff-sep">·</span>
+          <button class="diff-tab"        onclick="setDiff('hard')"  >Hard   <em>85+</em></button>
+        </div>
+      </div>
+
+      <div class="controls-divider"></div>
+
+      <!-- Start button — outlined/elegant -->
+      <button class="start-btn" id="start-btn" onclick="startGame()">
+        <span id="start-label">Start Drawing</span>
+        <span class="btn-arrow">→</span>
+      </button>
+
+    </div>
+
+    <!-- Scroll hint — absolute right -->
+    <a class="scroll-hint" href="#gallery">
+      <span id="scroll-label">Past Works</span>
+      <span class="scroll-arrow">↓</span>
+    </a>
+  </div>
+</section>
+
+<!-- GALLERY (below the fold) -->
+<section id="gallery">
+  <div class="gallery-head">
+    <div class="gallery-head-title">
+      <span class="gallery-jp" id="gallery-jp">作品集</span>
+      <span class="gallery-en" id="gallery-en">past works</span>
+    </div>
+    <span class="gallery-count" id="gallery-count"></span>
+  </div>
+  <div class="gallery-rule"></div>
+  <div class="gallery-grid" id="gallery-grid"></div>
+</section>
+
+<script>
+/* ── i18n ──────────────────────────────────────────────── */
+const T = {
+  en: {
+    eyebrow:     '落書き判定 · AI DRAWING JUDGE',
+    tagline:     'Draw anything.\nGet judged by AI.\nLevel up — or try again.',
+    stats:       ['Levels','Difficulties','Per Round'],
+    diffLabel:   'Difficulty',
+    diffs:       ['Easy','Normal','Hard'],
+    startBtn:    'Start Drawing',
+    scrollLabel: 'Past Works',
+    galleryJP:   '作品集',
+    galleryEN:   'past works',
+    drawLabel:   'Draw:',
+    drawings:    n => `${n} work${n!==1?'s':''}`,
+    empty:       'No works yet. Start your first game.',
+    lv:          n => `Lv.${n}`,
+    levelTag:    n => `Level ${n}`,
+    statLabels:  ['Levels','Difficulties','Per Round'],
+  },
+  zh: {
+    eyebrow:     '落書き判定 · AI 绘画评分',
+    tagline:     '画任何东西。\n接受 AI 评判。\n升级，或者重试。',
+    stats:       ['关卡','难度','每局时间'],
+    diffLabel:   '难度',
+    diffs:       ['简单','普通','困难'],
+    startBtn:    '开始作画',
+    scrollLabel: '往期作品',
+    galleryJP:   '作品集',
+    galleryEN:   '往期作品',
+    drawLabel:   '题目：',
+    drawings:    n => `共 ${n} 幅`,
+    empty:       '还没有作品，开始第一局吧。',
+    lv:          n => `第${n}关`,
+    levelTag:    n => `第 ${n} 关`,
+    statLabels:  ['关卡','难度','每局时间'],
+  },
+};
+
+/* ── SVG drawings ──────────────────────────────────────── */
+const INK = 'oklch(13% 0.018 258)';
+const g = c => `<svg viewBox="0 0 100 75" fill="none" xmlns="http://www.w3.org/2000/svg"
+  stroke="${INK}" stroke-linecap="round" stroke-linejoin="round">${c}</svg>`;
+
+const D = {
+  apple: g(`
+    <path d="M50 26C41 15 27 20 27 33C27 52 40 64 50 66C60 64 73 52 73 33C73 20 59 15 50 26Z" stroke-width="2.3"/>
+    <path d="M50 26C51 14 56 9 60 7" stroke-width="1.8"/>
+    <path d="M43 18C39 13 36 9 40 7" stroke-width="1.8"/>
+  `),
+  cat: g(`
+    <ellipse cx="50" cy="50" rx="19" ry="16" stroke-width="2.3"/>
+    <path d="M34 38L29 25L39 34" stroke-width="1.8"/>
+    <path d="M66 38L71 25L61 34" stroke-width="1.8"/>
+    <circle cx="43" cy="49" r="2.3" stroke-width="1.8"/>
+    <circle cx="57" cy="49" r="2.3" stroke-width="1.8"/>
+    <path d="M50 54L48 57L52 57Z" stroke-width="1.5"/>
+    <path d="M36 46L46 49M64 46L54 49" stroke-width="1.2"/>
+  `),
+  house: g(`
+    <rect x="20" y="42" width="60" height="30" stroke-width="2.3"/>
+    <path d="M13 42L50 12L87 42" stroke-width="2.3"/>
+    <rect x="40" y="57" width="20" height="15" stroke-width="1.8"/>
+    <rect x="25" y="49" width="14" height="11" stroke-width="1.8"/>
+    <rect x="61" y="49" width="14" height="11" stroke-width="1.8"/>
+  `),
+  sun: g(`
+    <circle cx="50" cy="37" r="14" stroke-width="2.3"/>
+    <path d="M50 17V11M50 63V57M70 37H76M24 37H30" stroke-width="2"/>
+    <path d="M64 23L69 18M36 51L31 56M64 51L69 56M36 23L31 18" stroke-width="2"/>
+  `),
+  bicycle: g(`
+    <circle cx="25" cy="54" r="14" stroke-width="2.3"/>
+    <circle cx="75" cy="54" r="14" stroke-width="2.3"/>
+    <path d="M25 54L44 28L60 54" stroke-width="2.3"/>
+    <path d="M44 28L75 54" stroke-width="1.8"/>
+    <path d="M44 28V20H56" stroke-width="1.8"/>
+  `),
+  fish: g(`
+    <path d="M18 38C30 23 62 23 74 38C62 53 30 53 18 38Z" stroke-width="2.3"/>
+    <path d="M18 38L6 27V49Z" stroke-width="1.8"/>
+    <circle cx="62" cy="34" r="2.3" fill="${INK}" stroke-width="0"/>
+    <path d="M32 38Q45 30 58 38Q45 46 32 38" stroke-width="1.4"/>
+  `),
+  tree: g(`
+    <path d="M50 8L22 44H38L18 68H82L62 44H78Z" stroke-width="2.3"/>
+    <rect x="43" y="66" width="14" height="7" stroke-width="1.8"/>
+  `),
+  pig_palace: g(`
+    <path d="M15 38H85M15 44H85M25 38V30M75 38V30M35 38V32M65 38V32M50 38V26" stroke-width="1.5"/>
+    <path d="M10 30L90 30L80 20H20Z" stroke-width="2"/>
+    <path d="M20 20L25 10H80L85 20" stroke-width="1.5"/>
+    <ellipse cx="50" cy="60" rx="16" ry="12" stroke-width="2"/>
+    <ellipse cx="44" cy="62" rx="4" ry="3" stroke-width="1.5"/>
+    <circle cx="43" cy="62" r="1" fill="${INK}" stroke-width="0"/>
+    <circle cx="45" cy="62" r="1" fill="${INK}" stroke-width="0"/>
+    <circle cx="38" cy="56" r="3.5" stroke-width="1.5"/>
+    <circle cx="62" cy="56" r="3.5" stroke-width="1.5"/>
+  `),
+};
+
+/* ── Sample gallery data ───────────────────────────────── */
+const works = {
+  en: [
+    {prompt:'An apple',                   level:1, score:87, key:'apple'},
+    {prompt:'A cat',                       level:2, score:72, key:'cat'},
+    {prompt:'A house',                     level:3, score:44, key:'house'},
+    {prompt:'The sun',                     level:1, score:91, key:'sun'},
+    {prompt:'A bicycle',                   level:4, score:79, key:'bicycle'},
+    {prompt:'A fish',                      level:2, score:33, key:'fish'},
+    {prompt:'A tree',                      level:5, score:68, key:'tree'},
+    {prompt:'Pig in the Forbidden City',   level:6, score:81, key:'pig_palace'},
+  ],
+  zh: [
+    {prompt:'一个苹果',            level:1, score:87, key:'apple'},
+    {prompt:'一只猫',              level:2, score:72, key:'cat'},
+    {prompt:'一座房子',            level:3, score:44, key:'house'},
+    {prompt:'太阳',                level:1, score:91, key:'sun'},
+    {prompt:'一辆自行车',          level:4, score:79, key:'bicycle'},
+    {prompt:'一条鱼',              level:2, score:33, key:'fish'},
+    {prompt:'一棵树',              level:5, score:68, key:'tree'},
+    {prompt:'猪在故宫开新闻发布会', level:6, score:81, key:'pig_palace'},
+  ],
+};
+
+/* ── State ─────────────────────────────────────────────── */
+let lang = 'en', diff = 'normal';
+
+function scoreClass(s){ return s>=75?'hi':s>=50?'mid':'lo'; }
+
+/* ── Render ────────────────────────────────────────────── */
+function render() {
+  const t = T[lang];
+  const ws = works[lang];
+
+  document.getElementById('level-tag').innerHTML = t.levelTag(7);
+  document.getElementById('eyebrow').innerHTML =
+    t.eyebrow.replace('·', '<span>·</span>');
+  document.getElementById('tagline').innerHTML =
+    t.tagline.replace(/\n/g, '<br>');
+
+  // Stats
+  ['stat0-label','stat1-label','stat2-label'].forEach((id,i) => {
+    const el = document.getElementById(id);
+    if(el) el.textContent = t.statLabels[i];
+  });
+
+  document.getElementById('diff-label').textContent = t.diffLabel;
+  document.querySelectorAll('.diff-tab').forEach((btn,i) => {
+    const sc=['60+','75+','85+'][i];
+    btn.innerHTML = `${t.diffs[i]} <em>${sc}</em>`;
+  });
+  document.getElementById('start-label').textContent = t.startBtn;
+  document.getElementById('scroll-label').textContent = t.scrollLabel;
+
+  document.getElementById('gallery-jp').textContent = t.galleryJP;
+  document.getElementById('gallery-en').textContent = t.galleryEN;
+  document.getElementById('gallery-count').textContent = t.drawings(ws.length);
+
+  const grid = document.getElementById('gallery-grid');
+  if(!ws.length){
+    grid.innerHTML=`<div class="gallery-empty"><p>${t.empty}</p></div>`;
+    return;
+  }
+  grid.innerHTML = ws.map(w=>`
+    <div class="card">
+      <div class="card-canvas">${D[w.key]||D.apple}</div>
+      <div class="seal ${scoreClass(w.score)}">${w.score}</div>
+      <div class="lv-tag">${t.lv(w.level)}</div>
+      <div class="card-foot">
+        <p class="card-prompt"><b>${t.drawLabel}</b> ${w.prompt}</p>
+      </div>
+    </div>`).join('');
+}
+
+/* ── Controls ──────────────────────────────────────────── */
+function setLang(l){
+  lang=l;
+  document.querySelectorAll('.lang-btn').forEach((b,i)=>{
+    b.classList.toggle('active',(i===0&&l==='en')||(i===1&&l==='zh'));
+  });
+  render();
+}
+function setDiff(d){
+  diff=d;
+  document.querySelectorAll('.diff-tab').forEach((b,i)=>{
+    b.classList.toggle('active',['easy','normal','hard'][i]===d);
+  });
+}
+function startGame(){
+  const lbl=document.getElementById('start-label');
+  const orig=lbl.textContent;
+  lbl.textContent='→ /game';
+  setTimeout(()=>{ lbl.textContent=orig; },1300);
+}
+
+render(); setDiff('normal');
+</script>
+</body>
+</html>
