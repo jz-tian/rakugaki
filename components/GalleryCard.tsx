@@ -18,9 +18,30 @@ function scoreColor(score: number) {
   return               { border: '#8b3228', bg: 'oklch(93% 0.048 27)',   text: '#6b2218' };
 }
 
+/** Wrap text into lines that fit within maxWidth, returns array of lines. */
+function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
+  // For CJK characters, split by char; otherwise split by word
+  const isCJK = /[\u4e00-\u9fff\u3000-\u303f]/.test(text);
+  const tokens = isCJK ? text.split('') : text.split(' ');
+  const lines: string[] = [];
+  let current = '';
+  for (const token of tokens) {
+    const candidate = current ? (isCJK ? current + token : current + ' ' + token) : token;
+    if (ctx.measureText(candidate).width > maxWidth && current) {
+      lines.push(current);
+      current = token;
+    } else {
+      current = candidate;
+    }
+  }
+  if (current) lines.push(current);
+  return lines;
+}
+
 export default function GalleryCard({ work, lang, onDelete }: Props) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen]                 = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [withComment, setWithComment]   = useState(true);
 
   function handleDelete() {
     deletePastWork(work.id);
@@ -28,8 +49,15 @@ export default function GalleryCard({ work, lang, onDelete }: Props) {
     setConfirmDelete(false);
     onDelete?.();
   }
-  const c = scoreColor(work.score);
+
+  function handleOpen() {
+    setWithComment(true); // reset toggle each time lightbox opens
+    setOpen(true);
+  }
+
+  const c       = scoreColor(work.score);
   const lvLabel = lang === 'zh' ? `第${work.level}关` : `Lv.${work.level}`;
+  const hasComment = !!work.comment;
 
   useEffect(() => {
     if (!open) return;
@@ -38,12 +66,101 @@ export default function GalleryCard({ work, lang, onDelete }: Props) {
     return () => window.removeEventListener('keydown', onKey);
   }, [open]);
 
+  // ── Export ────────────────────────────────────────────────────────────────
+  function exportJPG() {
+    const img = new Image();
+    img.onload = () => {
+      const IMG_W  = 800;
+      const IMG_H  = 600;
+      const showFooter = withComment && hasComment && work.comment;
+      const FOOTER_H   = showFooter ? 100 : 0;
+      const TOTAL_H    = IMG_H + FOOTER_H;
+
+      const canvas = document.createElement('canvas');
+      canvas.width  = IMG_W;
+      canvas.height = TOTAL_H;
+      const ctx = canvas.getContext('2d')!;
+
+      // White base
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, IMG_W, TOTAL_H);
+
+      // Drawing
+      ctx.drawImage(img, 0, 0, IMG_W, IMG_H);
+
+      // Footer strip
+      if (showFooter && work.comment) {
+        // Washi-toned background
+        ctx.fillStyle = '#faf7f3';
+        ctx.fillRect(0, IMG_H, IMG_W, FOOTER_H);
+
+        // Top rule
+        ctx.strokeStyle = '#ddd5c8';
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        ctx.moveTo(0, IMG_H + 0.5);
+        ctx.lineTo(IMG_W, IMG_H + 0.5);
+        ctx.stroke();
+
+        // Score stamp — top-right corner of strip
+        const STAMP = 44;
+        const sx = IMG_W - 20 - STAMP;
+        const sy = IMG_H + (FOOTER_H - STAMP) / 2;
+        ctx.strokeStyle = c.border;
+        ctx.lineWidth = 1.5;
+        ctx.fillStyle = c.bg;
+        ctx.fillRect(sx, sy, STAMP, STAMP);
+        ctx.strokeRect(sx, sy, STAMP, STAMP);
+        ctx.font = 'bold 18px Georgia, serif';
+        ctx.fillStyle = c.text;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(String(work.score), sx + STAMP / 2, sy + STAMP / 2);
+
+        // Comment text — centred, with wrapping, leaving room for score
+        const textMaxW = IMG_W - STAMP - 60;
+        ctx.font = 'italic 13px Georgia, serif';
+        ctx.fillStyle = '#6b5f55';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const lines = wrapText(ctx, `"${work.comment}"`, textMaxW);
+        const LINE_H = 18;
+        const blockH = lines.length * LINE_H;
+        const startY = IMG_H + (FOOTER_H - blockH) / 2 + LINE_H / 2;
+        lines.forEach((line, i) => {
+          ctx.fillText(line, (IMG_W - STAMP - 20) / 2, startY + i * LINE_H);
+        });
+
+        // Prompt label — bottom-left, tiny
+        ctx.font = '10px Georgia, serif';
+        ctx.fillStyle = '#b0a898';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(work.prompt, 16, IMG_H + FOOTER_H - 10, IMG_W - STAMP - 40);
+      }
+
+      canvas.toBlob(blob => {
+        if (!blob) return;
+        const url = URL.createObjectURL(blob);
+        const a   = document.createElement('a');
+        a.href    = url;
+        const safe = work.prompt.replace(/[^\w\u4e00-\u9fff]/g, '_').slice(0, 28);
+        a.download = `rakugaki_${safe}_${work.score}.jpg`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 'image/jpeg', 0.93);
+    };
+    img.src = work.imageBase64;
+  }
+
   return (
     <>
       {/* ── Card ── */}
       <div
         className="relative bg-white overflow-hidden cursor-pointer transition-colors hover:bg-stone-50"
-        onClick={() => setOpen(true)}
+        onClick={handleOpen}
       >
         <div className="aspect-[4/3] bg-white flex items-center justify-center p-3">
           {work.imageBase64 ? (
@@ -152,7 +269,68 @@ export default function GalleryCard({ work, lang, onDelete }: Props) {
                 </p>
               </div>
 
-              <div className="flex items-center gap-4 ml-4 shrink-0">
+              <div className="flex items-center gap-3 ml-2 shrink-0">
+
+                {/* ── Download controls ── */}
+                <div className="flex items-center gap-2">
+                  {/* Comment toggle — only when comment exists */}
+                  {hasComment && (
+                    <button
+                      onClick={() => setWithComment(v => !v)}
+                      className="font-cormorant italic tracking-[0.06em] transition-all"
+                      style={{
+                        fontSize: '0.75rem',
+                        color: withComment ? 'var(--ink-2)' : 'var(--ink-3)',
+                        background: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        padding: '2px 0',
+                        borderBottom: withComment ? '1px solid var(--ink-3)' : '1px solid transparent',
+                        textDecoration: withComment ? 'none' : 'line-through',
+                        textDecorationColor: 'var(--ink-3)',
+                      }}
+                      title={withComment
+                        ? (lang === 'zh' ? '点击：不含评语' : 'Click: without comment')
+                        : (lang === 'zh' ? '点击：含评语' : 'Click: with comment')}
+                    >
+                      {lang === 'zh' ? '评语' : 'comment'}
+                    </button>
+                  )}
+
+                  {/* Download button */}
+                  <button
+                    onClick={exportJPG}
+                    className="flex items-center gap-1.5 font-cormorant tracking-[0.08em] transition-all"
+                    style={{
+                      fontSize: '0.8rem',
+                      color: 'var(--ink-2)',
+                      background: 'transparent',
+                      border: '0.5px solid var(--rule)',
+                      borderRadius: '2px',
+                      cursor: 'pointer',
+                      padding: '3px 10px',
+                      transition: 'border-color 0.15s, color 0.15s',
+                    }}
+                    onMouseEnter={e => {
+                      (e.currentTarget as HTMLElement).style.borderColor = 'var(--ink-3)';
+                      (e.currentTarget as HTMLElement).style.color = 'var(--ink)';
+                    }}
+                    onMouseLeave={e => {
+                      (e.currentTarget as HTMLElement).style.borderColor = 'var(--rule)';
+                      (e.currentTarget as HTMLElement).style.color = 'var(--ink-2)';
+                    }}
+                    title={lang === 'zh' ? '保存为 JPG' : 'Save as JPG'}
+                  >
+                    <svg viewBox="0 0 14 14" fill="none" style={{ width: '11px', height: '11px' }}>
+                      <path d="M7 1v8M4 6l3 3 3-3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M2 11h10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+                    </svg>
+                    {lang === 'zh' ? '存图' : 'Save'}
+                  </button>
+                </div>
+
+                <div style={{ width: '0.5px', height: '16px', background: 'var(--rule)', flexShrink: 0 }} />
+
                 {/* Delete button / confirm inline */}
                 {confirmDelete ? (
                   <div className="flex items-center gap-2">
