@@ -4,6 +4,8 @@
 
 Get a random prompt, draw it in 120 seconds, and let Gemini Vision score your work. Clear the threshold to advance — or retry until you do.
 
+![Rakugaki demo](public/rakugaki_demo.gif)
+
 ---
 
 ## Features
