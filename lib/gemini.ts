@@ -32,10 +32,18 @@ async function withTimeout<T>(fn: () => Promise<T>): Promise<T> {
   ]);
 }
 
+// Complexity tier within each difficulty — level drives a gentle ramp
+function levelTier(level: number): string {
+  if (level <= 2)  return 'tier 1 (simplest possible — a single word concept anyone can sketch)';
+  if (level <= 5)  return 'tier 2 (one object with a minor detail or setting)';
+  if (level <= 9)  return 'tier 3 (two elements interacting in a straightforward scene)';
+  return               'tier 4 (a simple scene with a light twist or mild whimsy)';
+}
+
 const STYLE_BANDS: Record<Difficulty, string> = {
-  easy:   'single common objects (e.g. an apple, a sun, a cat)',
-  normal: 'combined everyday scenes (e.g. a child jumping rope, a rainy street)',
-  hard:   'absurd or surreal scenarios (e.g. a pig in the Forbidden City, an alien on the subway)',
+  easy:   'universally recognisable single objects or animals that a child could draw in under a minute (e.g. sun, apple, fish, star, flower, cat)',
+  normal: 'simple objects or animals with one added element or gentle action (e.g. a cat napping, a dog with a ball, a house with smoke from the chimney)',
+  hard:   'short everyday scenes with two or three elements (e.g. a person riding a bicycle, a child flying a kite, a dog jumping over a puddle)',
 };
 
 export async function generatePrompt(
@@ -46,12 +54,12 @@ export async function generatePrompt(
   const ai = getGenAI();
   const langNote = language === 'zh' ? 'Respond in simplified Chinese.' : 'Respond in English.';
 
-  const userPrompt = `You are a creative drawing game prompt generator.
-Generate ONE drawing prompt for complexity level ${level} in the "${difficulty}" style band.
+  const userPrompt = `You are a drawing game prompt generator. Keep prompts SHORT and drawable in 2 minutes by an average person.
+Generate ONE prompt at ${levelTier(level)} for the "${difficulty}" style band.
 Style band: ${STYLE_BANDS[difficulty]}.
-Higher complexity levels should add more details, characters, or whimsy within the same style band.
+IMPORTANT: stay close to the tier description — do NOT over-complicate. Simpler is better.
 ${langNote}
-Rules: Be fun and creative. Avoid political figures, sexual content, graphic violence, or content targeting ethnic/religious groups.
+Rules: fun and friendly. No political figures, sexual content, graphic violence, or content targeting ethnic/religious groups.
 Return ONLY the prompt text — no explanations, no quotes, no punctuation at the end.`;
 
   return withRetry(() =>

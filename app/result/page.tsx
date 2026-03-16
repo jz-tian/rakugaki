@@ -42,6 +42,7 @@ export default function ResultPage() {
         prompt: session.prompt ?? '',
         imageBase64: session.lastImageBase64 ?? '',
         score: (session.lastResult as Result).score,
+        comment: (session.lastResult as Result).comment,
         level: state.level,
         difficulty: state.difficulty,
       });

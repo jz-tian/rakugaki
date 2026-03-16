@@ -44,6 +44,11 @@ export default function HomePage() {
     router.push('/game');
   }
 
+  function resetLevel() {
+    setLevel(1);
+    setGameState({ level: 1 });
+  }
+
   const diffs: { key: Difficulty; threshold: string }[] = [
     { key: 'easy',   threshold: '60+' },
     { key: 'normal', threshold: '75+' },
@@ -72,11 +77,18 @@ export default function HomePage() {
 
       {/* ── HERO (full viewport) ──────────────────────────── */}
       <section className="flex flex-col min-h-svh px-[clamp(2rem,6vw,5rem)]">
-        <div className="flex-1 grid grid-cols-1 md:grid-cols-[1fr_auto] gap-[clamp(1.5rem,3vw,3rem)] items-center pt-24 pb-8 max-w-[820px] w-full mx-auto animate-fadeup">
+        {/* flex-1 wrapper centers the content block vertically (avoids dead space on iPad) */}
+        <div className="flex-1 flex items-center">
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-[clamp(1.5rem,3vw,3rem)] items-center pt-24 pb-8 max-w-[900px] w-full mx-auto animate-fadeup">
 
           {/* Left */}
           <div className="flex flex-col">
-            <h1 className="font-shippori font-bold text-[clamp(3.5rem,6.5vw,6rem)] leading-[1.05] tracking-[0.05em]" style={{ color: 'var(--ink)' }}>
+            {/* Logo mark — mobile only, desktop uses the sidebar brush image */}
+            <div className="md:hidden mb-4">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo.svg" alt="" aria-hidden style={{ height: '56px', width: '56px', objectFit: 'contain', opacity: 0.88 }} />
+            </div>
+            <h1 className="font-shippori font-bold text-[clamp(3.5rem,8vw,6rem)] leading-[1.05] tracking-[0.05em]" style={{ color: 'var(--ink)' }}>
               落書き
             </h1>
             <p className="font-cormorant font-light text-[clamp(1rem,1.8vw,1.5rem)] tracking-[0.28em] mt-1.5 uppercase" style={{ color: 'var(--ink-3)' }}>
@@ -93,7 +105,7 @@ export default function HomePage() {
                   </span>
                   <p
                     className="font-shippori"
-                    style={{ fontSize: 'clamp(0.8rem,1.05vw,0.92rem)', color: 'var(--ink-2)', letterSpacing: '0.06em', lineHeight: 1.5 }}
+                    style={{ fontSize: 'clamp(0.82rem,1.4vw,1rem)', color: 'var(--ink-2)', letterSpacing: '0.06em', lineHeight: 1.5 }}
                   >
                     {t(lang, `home.tagline.${n}`)}
                   </p>
@@ -105,10 +117,10 @@ export default function HomePage() {
               {[
                 { num: '∞', label: t(lang, 'home.stat.levels') },
                 { num: '3',  label: t(lang, 'home.stat.difficulties') },
-                { num: '90″', label: t(lang, 'home.stat.perRound') },
+                { num: '2′', label: t(lang, 'home.stat.perRound') },
               ].map(s => (
                 <div key={s.label} className="flex flex-col gap-2">
-                  <span className="font-cormorant font-normal text-[clamp(1.8rem,3vw,2.6rem)] leading-none" style={{ color: 'var(--ink)' }}>
+                  <span className="font-cormorant font-normal text-[clamp(1.8rem,4vw,2.8rem)] leading-none" style={{ color: 'var(--ink)' }}>
                     {s.num}
                   </span>
                   <span className="text-[0.65rem] font-medium tracking-[0.16em] uppercase" style={{ color: 'var(--ink-3)' }}>
@@ -119,11 +131,12 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Right: brush */}
+          {/* Right: brush — desktop only (mobile: too tall, breaks layout) */}
           <div className="hidden md:flex items-center justify-center">
             <HeroBrush />
           </div>
         </div>
+        </div>{/* end centering wrapper */}
 
         {/* Controls bar */}
         <div
@@ -164,34 +177,67 @@ export default function HomePage() {
 
             <div className="hidden sm:block h-8 w-px" style={{ background: 'var(--rule)' }} />
 
-            {/* Start button */}
-            <button
-              onClick={startGame}
-              className="group flex items-center gap-2 px-8 py-2.5 font-cormorant text-[1.05rem] tracking-[0.12em] transition-colors"
-              style={{
-                color: 'var(--beni)',
-                border: '1px solid var(--beni)',
-                borderRadius: '2px',
-                background: 'transparent',
-              }}
-              onMouseEnter={e => {
-                (e.currentTarget as HTMLButtonElement).style.background = 'var(--beni)';
-                (e.currentTarget as HTMLButtonElement).style.color = 'oklch(98.5% 0.006 74)';
-              }}
-              onMouseLeave={e => {
-                (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
-                (e.currentTarget as HTMLButtonElement).style.color = 'var(--beni)';
-              }}
-            >
-              {t(lang, 'home.cta.start')}
-              <span className="transition-transform group-hover:translate-x-1">→</span>
-            </button>
+            {/* Start button + optional reset */}
+            <div className="flex items-center gap-4">
+              <button
+                onClick={startGame}
+                className="group flex items-center gap-2 px-8 py-2.5 font-cormorant text-[1.05rem] tracking-[0.12em] transition-colors"
+                style={{
+                  color: 'var(--beni)',
+                  border: '1px solid var(--beni)',
+                  borderRadius: '2px',
+                  background: 'transparent',
+                }}
+                onMouseEnter={e => {
+                  (e.currentTarget as HTMLButtonElement).style.background = 'var(--beni)';
+                  (e.currentTarget as HTMLButtonElement).style.color = 'oklch(98.5% 0.006 74)';
+                }}
+                onMouseLeave={e => {
+                  (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
+                  (e.currentTarget as HTMLButtonElement).style.color = 'var(--beni)';
+                }}
+              >
+                {t(lang, 'home.cta.start')}
+                <span className="transition-transform group-hover:translate-x-1">→</span>
+              </button>
+
+              {/* Reset level — only shown when past level 1 */}
+              {level > 1 && (
+                <button
+                  onClick={resetLevel}
+                  className="font-cormorant italic text-[0.82rem] tracking-[0.1em] transition-all"
+                  style={{
+                    color: 'var(--ink-3)',
+                    background: 'transparent',
+                    border: 'none',
+                    padding: '4px 0',
+                    cursor: 'pointer',
+                    borderBottom: '1px solid transparent',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                  }}
+                  onMouseEnter={e => {
+                    (e.currentTarget as HTMLButtonElement).style.color = 'var(--ink-2)';
+                    (e.currentTarget as HTMLButtonElement).style.borderBottomColor = 'var(--ink-3)';
+                  }}
+                  onMouseLeave={e => {
+                    (e.currentTarget as HTMLButtonElement).style.color = 'var(--ink-3)';
+                    (e.currentTarget as HTMLButtonElement).style.borderBottomColor = 'transparent';
+                  }}
+                  title={t(lang, 'home.cta.reset')}
+                >
+                  <span style={{ fontSize: '0.9rem', lineHeight: 1 }}>↺</span>
+                  {t(lang, 'home.cta.reset')}
+                </button>
+              )}
+            </div>
           </div>
 
-          {/* Scroll hint */}
+          {/* Scroll hint — visible on all sizes */}
           <a
             href="#gallery"
-            className="hidden sm:flex absolute right-0 items-center gap-1.5 font-cormorant italic text-[0.8rem] tracking-[0.1em] no-underline transition-colors"
+            className="flex absolute right-0 items-center gap-1.5 font-cormorant italic text-[0.8rem] tracking-[0.1em] no-underline transition-colors"
             style={{ color: 'var(--ink-3)' }}
           >
             {t(lang, 'home.scroll.label')}

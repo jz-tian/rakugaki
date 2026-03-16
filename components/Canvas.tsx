@@ -252,7 +252,6 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(
         return;
       }
 
-      saveSnapshot();
       drawingRef.current = true;
       lastPosRef.current = pt;
       lastTimeRef.current = e.timeStamp;
@@ -281,6 +280,7 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(
       e.currentTarget.releasePointerCapture(e.pointerId);
       drawingRef.current = false;
       lastPosRef.current = null;
+      saveSnapshot(); // save completed stroke so redo works
     }, []);
 
     const onPointerLeave = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -288,6 +288,7 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(
       e.currentTarget.releasePointerCapture(e.pointerId);
       drawingRef.current = false;
       lastPosRef.current = null;
+      saveSnapshot();
     }, []);
 
     return (

@@ -309,52 +309,53 @@ export default function Toolbar({
   /* ── Vertical layout (default) ────────────────────── */
   return (
     <aside
-      className="flex flex-col shrink-0 toolbar-scroll overflow-y-auto"
+      className="flex flex-col shrink-0 h-full"
       style={{
-        width: '92px',
+        width: '82px',
         background: 'var(--surface)',
         borderRight: '0.5px solid var(--rule)',
       }}
     >
       {/* ── Main tools ────────────────────────────── */}
-      <div className="flex flex-col gap-1 px-2.5 pt-4 pb-2">
+      <div className="flex flex-col px-2 pt-3 pb-1">
         {([
-          { id: 'brush'  as const, label: '筆',  enLabel: 'Brush'  },
-          { id: 'eraser' as const, label: '消す', enLabel: 'Eraser' },
-          { id: 'fill'   as const, label: '塗る', enLabel: 'Fill'   },
-        ]).map(({ id, label, enLabel }) => {
+          { id: 'brush'  as const, label: en ? 'Brush'  : '筆'  },
+          { id: 'eraser' as const, label: en ? 'Erase'  : '消す' },
+          { id: 'fill'   as const, label: en ? 'Fill'   : '塗る' },
+        ]).map(({ id, label }) => {
           const active = tool === id;
           return (
             <button
               key={id}
               onClick={() => onToolChange(id)}
               title={label}
-              className="relative flex flex-col items-center gap-[6px] py-3 rounded transition-all"
-              style={{
-                background: active ? 'var(--beni-soft)' : 'transparent',
+              className="relative flex flex-col items-center gap-[5px] py-[7px] rounded transition-all"
+              style={{ background: active ? 'var(--beni-soft)' : 'transparent' }}
+              onMouseEnter={e => {
+                if (!active) (e.currentTarget as HTMLElement).style.background = 'var(--bg)';
+              }}
+              onMouseLeave={e => {
+                if (!active) (e.currentTarget as HTMLElement).style.background = 'transparent';
               }}
             >
               {active && (
                 <div
                   className="absolute left-0 top-1/2 -translate-y-1/2 rounded-r"
-                  style={{ width: '3px', height: '24px', background: 'var(--beni)' }}
+                  style={{ width: '2.5px', height: '22px', background: 'var(--beni)' }}
                 />
               )}
               {id === 'brush'  && <BrushIcon  active={active} />}
               {id === 'eraser' && <EraserIcon active={active} />}
               {id === 'fill'   && <FillIcon   active={active} />}
-              <span className="flex flex-col items-center gap-[2px]">
-                <span
-                  className="font-shippori"
-                  style={{ fontSize: '11px', letterSpacing: '0.06em', color: active ? 'var(--beni)' : 'var(--ink-3)' }}
-                >
-                  {label}
-                </span>
-                {en && (
-                  <span style={{ fontSize: '8px', fontFamily: 'var(--font-dm)', letterSpacing: '0.08em', color: active ? 'var(--beni)' : 'var(--ink-3)', opacity: 0.65 }}>
-                    {enLabel}
-                  </span>
-                )}
+              <span
+                className="font-shippori"
+                style={{
+                  fontSize: '10px',
+                  letterSpacing: '0.06em',
+                  color: active ? 'var(--beni)' : 'var(--ink-3)',
+                }}
+              >
+                {label}
               </span>
             </button>
           );
@@ -363,23 +364,29 @@ export default function Toolbar({
 
       <Sep />
 
-      {/* ── Brush styles (brush only) ──────────────── */}
+      {/* ── Brush styles (vertical, 3 rows) ───────── */}
       {tool === 'brush' && (
         <>
-          <div className="flex flex-col gap-1 px-2.5 py-2">
+          <div className="flex flex-col px-2 py-1.5">
             {(['normal', 'pencil', 'ink'] as BrushStyle[]).map(s => {
               const active = brushStyle === s;
               return (
                 <button
                   key={s}
                   onClick={() => onBrushStyleChange(s)}
-                  className="flex flex-col items-center gap-2 py-2.5 px-2 rounded transition-all"
+                  className="flex flex-col items-center gap-[5px] py-[7px] px-1.5 rounded transition-all"
                   style={{ background: active ? 'var(--beni-soft)' : 'transparent' }}
+                  onMouseEnter={e => {
+                    if (!active) (e.currentTarget as HTMLElement).style.background = 'var(--bg)';
+                  }}
+                  onMouseLeave={e => {
+                    if (!active) (e.currentTarget as HTMLElement).style.background = 'transparent';
+                  }}
                 >
                   <StrokePreview style={s} active={active} />
                   <span
                     style={{
-                      fontSize: '10px',
+                      fontSize: '9px',
                       fontFamily: 'var(--font-dm)',
                       textTransform: 'capitalize',
                       letterSpacing: '0.06em',
@@ -397,15 +404,15 @@ export default function Toolbar({
       )}
 
       {/* ── Size ──────────────────────────────────── */}
-      <div className="flex flex-col items-center gap-2.5 px-3 py-3.5">
-        <div className="flex justify-between items-center w-full">
-          <span className="flex items-baseline gap-1.5">
-            <span className="font-shippori" style={{ fontSize: '11px', color: 'var(--ink-3)', letterSpacing: '0.06em' }}>
-              太さ
-            </span>
-            {en && <span style={{ fontSize: '8px', fontFamily: 'var(--font-dm)', color: 'var(--ink-3)', opacity: 0.65, letterSpacing: '0.08em' }}>Size</span>}
+      <div className="flex flex-col gap-1.5 px-3 py-2">
+        <div className="flex justify-between items-center">
+          <span
+            className="font-shippori"
+            style={{ fontSize: '10px', color: 'var(--ink-3)', letterSpacing: '0.06em' }}
+          >
+            {en ? 'Size' : '太さ'}
           </span>
-          <span style={{ fontSize: '11px', fontFamily: 'var(--font-dm)', color: 'var(--ink-3)' }}>
+          <span style={{ fontSize: '10px', fontFamily: 'var(--font-dm)', color: 'var(--ink-2)' }}>
             {size}
           </span>
         </div>
@@ -415,57 +422,61 @@ export default function Toolbar({
           className="w-full"
           style={{ accentColor: 'var(--beni)' }}
         />
-        {/* Live dot preview */}
-        <div
-          className="rounded-full transition-all"
-          style={{
-            width:  `${Math.max(4, Math.min(Math.round(size * 0.9), 32))}px`,
-            height: `${Math.max(4, Math.min(Math.round(size * 0.9), 32))}px`,
-            background: color,
-            border: '0.5px solid var(--rule)',
-          }}
-        />
       </div>
 
       <Sep />
 
       {/* ── Colour palette ────────────────────────── */}
-      <div className="px-3 py-3">
+      <div className="px-3 py-2">
         <span
           className="font-shippori"
-          style={{ fontSize: '11px', color: 'var(--ink-3)', letterSpacing: '0.06em', display: 'block', marginBottom: '10px' }}
+          style={{ fontSize: '10px', color: 'var(--ink-3)', letterSpacing: '0.06em', display: 'block', marginBottom: '8px' }}
         >
-          色{en && <span style={{ marginLeft: '5px', fontSize: '8px', fontFamily: 'var(--font-dm)', opacity: 0.65, letterSpacing: '0.08em' }}>Color</span>}
+          {en ? 'Color' : '色'}
         </span>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px' }}>
+
+        {/* Circular ink-spot swatches — 4 cols × 5 rows */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '5px' }}>
           {PALETTE.map(c => (
             <button
               key={c}
               onClick={() => onColorChange(c)}
               title={c}
               style={{
-                width: '16px', height: '16px',
+                width: '13px', height: '13px',
                 background: c,
-                borderRadius: '2px',
-                outline: color === c ? '2px solid var(--beni)' : '0.5px solid var(--rule)',
-                outlineOffset: color === c ? '1px' : '0',
-                transform: color === c ? 'scale(1.12)' : 'scale(1)',
-                transition: 'all 0.1s',
+                borderRadius: '50%',
+                outline: color === c ? '2px solid var(--beni)' : 'none',
+                outlineOffset: '2px',
+                transform: color === c ? 'scale(1.2)' : 'scale(1)',
+                boxShadow: c === '#ffffff'
+                  ? 'inset 0 0 0 0.5px var(--rule)'
+                  : 'none',
+                transition: 'transform 0.12s ease, outline 0.12s ease',
               }}
             />
           ))}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '11px' }}>
-          <input
-            type="color" value={color}
-            onChange={e => onColorChange(e.target.value)}
-            style={{
-              width: '26px', height: '20px',
-              cursor: 'pointer', borderRadius: '2px',
-              border: '0.5px solid var(--rule)',
-            }}
-          />
-          <span style={{ fontSize: '8px', fontFamily: 'monospace', color: 'var(--ink-3)', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '44px' }}>
+
+        {/* Current colour + custom picker */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '10px' }}>
+          <div style={{ position: 'relative', flexShrink: 0 }}>
+            <div
+              style={{
+                width: '20px', height: '20px',
+                background: color,
+                borderRadius: '50%',
+                border: '0.5px solid var(--rule)',
+              }}
+            />
+            <input
+              type="color" value={color}
+              onChange={e => onColorChange(e.target.value)}
+              style={{ position: 'absolute', inset: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer', borderRadius: '50%' }}
+              aria-label="Custom color"
+            />
+          </div>
+          <span style={{ fontSize: '8px', fontFamily: 'monospace', color: 'var(--ink-3)', letterSpacing: '0.02em', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {color}
           </span>
         </div>
@@ -473,48 +484,39 @@ export default function Toolbar({
 
       <Sep />
 
-      {/* ── Actions ───────────────────────────────── */}
-      <div className="flex flex-col gap-1 px-2.5 py-2.5 pb-5">
+      {/* ── Actions — icon row ─────────────────────── */}
+      <div className="flex items-center justify-around px-2 py-2">
         {([
-          { label: '戻る',    enLabel: 'Undo', short: '⌘Z',  fn: onUndo },
-          { label: 'やり直す', enLabel: 'Redo', short: '⇧⌘Z', fn: onRedo },
-        ]).map(({ label, enLabel, short, fn }) => (
+          { label: 'Undo',  fn: onUndo,  Icon: UndoIcon,  beni: false },
+          { label: 'Redo',  fn: onRedo,  Icon: RedoIcon,  beni: false },
+          { label: 'Clear', fn: onClear, Icon: ClearIcon, beni: true  },
+        ] as { label: string; fn: () => void; Icon: () => JSX.Element; beni: boolean }[]).map(({ label, fn, Icon, beni }) => (
           <button
-            key={enLabel}
+            key={label}
             onClick={fn}
-            title={`${enLabel} (${short})`}
-            className="flex items-center justify-between px-2.5 py-2 rounded transition-all"
-            style={{ color: 'var(--ink-3)', fontFamily: 'var(--font-shippori)', fontSize: '11px' }}
+            title={label}
+            className="flex items-center justify-center rounded transition-all"
+            style={{
+              width: '28px', height: '28px',
+              background: 'transparent',
+              color: beni ? 'var(--beni)' : 'var(--ink-3)',
+            }}
             onMouseEnter={e => {
-              (e.currentTarget as HTMLElement).style.color = 'var(--ink)';
-              (e.currentTarget as HTMLElement).style.background = 'var(--bg)';
+              (e.currentTarget as HTMLElement).style.background = beni ? 'var(--beni-soft)' : 'var(--bg)';
+              if (!beni) (e.currentTarget as HTMLElement).style.color = 'var(--ink)';
             }}
             onMouseLeave={e => {
-              (e.currentTarget as HTMLElement).style.color = 'var(--ink-3)';
               (e.currentTarget as HTMLElement).style.background = 'transparent';
+              if (!beni) (e.currentTarget as HTMLElement).style.color = 'var(--ink-3)';
             }}
           >
-            <span className="flex flex-col gap-[1px]">
-              <span>{label}</span>
-              {en && <span style={{ fontSize: '8px', fontFamily: 'var(--font-dm)', opacity: 0.65, letterSpacing: '0.08em' }}>{enLabel}</span>}
-            </span>
-            <span style={{ fontSize: '8px', opacity: 0.4, fontFamily: 'var(--font-dm)' }}>{short}</span>
+            <Icon />
           </button>
         ))}
-        <button
-          onClick={onClear}
-          title="Clear canvas"
-          className="flex items-center px-2.5 py-2 rounded transition-all mt-1"
-          style={{ color: 'var(--beni)', fontFamily: 'var(--font-shippori)', fontSize: '11px' }}
-          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--beni-soft)'; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
-        >
-          <span className="flex flex-col gap-[1px]">
-            <span>クリア</span>
-            {en && <span style={{ fontSize: '8px', fontFamily: 'var(--font-dm)', opacity: 0.65, letterSpacing: '0.08em' }}>Clear</span>}
-          </span>
-        </button>
       </div>
+
+      {/* Fills remaining height */}
+      <div className="flex-1" />
     </aside>
   );
 }

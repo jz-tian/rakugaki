@@ -33,7 +33,7 @@ components/
   Toolbar.tsx           # Tool selector sidebar
   Timer.tsx             # 3-min countdown
   LanguageToggle.tsx    # EN / 中文 toggle
-  GalleryCard.tsx       # Past-work card with score stamp
+  GalleryCard.tsx       # Past-work card with score stamp and AI-comment lightbox
 lib/
   gemini.ts             # Gemini client (8s timeout, 429 retry-once)
   promptToken.ts        # HMAC-SHA256 sign / verify
@@ -69,3 +69,7 @@ API route tests live inside `app/api/<route>/__tests__/`.
 **Canvas stale closures** — tool/brush/color/size are mirrored into refs (`toolRef`, `brushRef`, etc.) so Pointer Event handlers always read current values without being recreated. The same ref pattern is used in `app/game/page.tsx` for the `submit` callback (`phaseRef`, `tokenRef`, etc.).
 
 **Flood fill color parser** — reuses a single persistent 1×1 `<canvas>` via `colorParserRef` rather than creating a new DOM element on each fill click.
+
+**Undo/redo snapshot timing** — `saveSnapshot()` is called in `onPointerUp` / `onPointerLeave` (after the stroke), NOT in `onPointerDown`. Saving before the stroke means redo would restore the pre-stroke state instead of the completed stroke. Flood fill is the exception: it saves once before and once after (wrapping the fill).
+
+**Fetch race condition** — `fetchAbortRef` holds the previous `AbortController`. Each call to `fetchPrompt()` aborts the prior in-flight request before starting a new one. `AbortError` is silently swallowed. This prevents React Strict Mode's double-invoke from producing two prompts.

@@ -32,6 +32,7 @@ function Kiri() {
 export default function GamePage() {
   const router = useRouter();
   const canvasRef = useRef<CanvasHandle>(null);
+  const fetchAbortRef = useRef<AbortController | null>(null);
 
   // Game state (from localStorage)
   const [level, setLevel]     = useState(1);
@@ -72,12 +73,18 @@ export default function GamePage() {
   }, []);
 
   async function fetchPrompt(lv: number, diff: Difficulty, language: Language) {
+    // Abort any previous in-flight request (fixes React Strict Mode double-invoke race)
+    fetchAbortRef.current?.abort();
+    const ctrl = new AbortController();
+    fetchAbortRef.current = ctrl;
+
     setPhase('loading');
     try {
       const res = await fetch('/api/generate-prompt', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ level: lv, difficulty: diff, language }),
+        signal: ctrl.signal,
       });
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
@@ -85,7 +92,8 @@ export default function GamePage() {
       setToken(data.token);
       setSessionState({ prompt: data.prompt, promptToken: data.token, isRetry: false });
       setPhase('drawing');
-    } catch {
+    } catch (err) {
+      if ((err as Error).name === 'AbortError') return;
       setPhase('error');
       setErrorMsg(t(language, 'error.unknown'));
     }
@@ -138,15 +146,14 @@ export default function GamePage() {
 
       {/* ── Header ────────────────────────────────── */}
       <header
-        className="beni-bar relative shrink-0 flex items-center justify-between px-6"
+        className="beni-bar relative shrink-0 flex flex-col md:flex-row md:items-center px-4 md:px-6"
         style={{
-          height: '62px',
           background: 'var(--surface)',
           borderBottom: '0.5px solid var(--rule)',
         }}
       >
-        {/* Left: level badge + prompt */}
-        <div className="flex items-center min-w-0 flex-1">
+        {/* Top row: level badge + (inline prompt on desktop) + timer */}
+        <div className="flex items-center justify-between md:flex-1 md:min-w-0" style={{ height: '54px' }}>
 
           {/* Level — Japanese-style */}
           <div className="shrink-0 flex items-center gap-1.5">
@@ -172,65 +179,79 @@ export default function GamePage() {
             )}
           </div>
 
-          <Kiri />
+          {/* Desktop: inline prompt (truncated) */}
+          <div className="hidden md:flex items-center min-w-0 flex-1 mx-2">
+            <Kiri />
+            {(phase === 'drawing' || phase === 'submitting') && prompt && (
+              <span
+                className="font-shippori truncate text-[0.95rem]"
+                style={{ color: 'var(--ink)', letterSpacing: '0.06em', lineHeight: 1.4 }}
+              >
+                {prompt}
+              </span>
+            )}
+            {phase === 'loading' && (
+              <span className="font-cormorant italic animate-loading-pulse" style={{ fontSize: '1rem', color: 'var(--ink-3)' }}>
+                {t(lang, 'game.loading')}
+              </span>
+            )}
+            {phase === 'submitting' && (
+              <>
+                <Kiri />
+                <span className="font-cormorant italic animate-loading-pulse shrink-0" style={{ fontSize: '1rem', color: 'var(--ink-2)' }}>
+                  {t(lang, 'game.scoring')}
+                </span>
+              </>
+            )}
+          </div>
 
-          {/* Prompt / status text */}
-          {(phase === 'drawing' || phase === 'submitting') && prompt && (
+          {/* Timer + timed-out */}
+          <div className="flex items-center gap-3 shrink-0 ml-2">
+            {timedOut && (
+              <span className="font-shippori hidden sm:inline" style={{ fontSize: '12px', letterSpacing: '0.12em', color: '#a07830' }}>
+                {t(lang, 'game.timedOut')}
+              </span>
+            )}
+            {phase === 'drawing' && (
+              <Timer durationSeconds={120} onExpire={onTimerExpire} paused={phase !== 'drawing'} />
+            )}
+          </div>
+        </div>
+
+        {/* Mobile-only: full prompt on second row */}
+        {(phase === 'drawing' || phase === 'submitting') && prompt && (
+          <div className="md:hidden pb-2.5">
             <span
-              className="font-shippori truncate text-sm md:text-[0.95rem]"
+              className="font-shippori"
               style={{
+                fontSize: '0.78rem',
                 color: 'var(--ink)',
                 letterSpacing: '0.06em',
-                lineHeight: 1.4,
+                lineHeight: 1.6,
+                display: '-webkit-box',
+                WebkitLineClamp: 3,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
               }}
             >
               {prompt}
             </span>
-          )}
-
-          {phase === 'loading' && (
-            <span
-              className="font-cormorant italic animate-loading-pulse"
-              style={{ fontSize: '1rem', color: 'var(--ink-3)' }}
-            >
+          </div>
+        )}
+        {phase === 'loading' && (
+          <div className="md:hidden pb-2.5">
+            <span className="font-cormorant italic animate-loading-pulse" style={{ fontSize: '0.88rem', color: 'var(--ink-3)' }}>
               {t(lang, 'game.loading')}
             </span>
-          )}
-
-          {phase === 'submitting' && (
-            <>
-              <Kiri />
-              <span
-                className="font-cormorant italic animate-loading-pulse shrink-0"
-                style={{ fontSize: '1rem', color: 'var(--ink-2)' }}
-              >
-                {t(lang, 'game.scoring')}
-              </span>
-            </>
-          )}
-        </div>
-
-        {/* Right: timer + timed-out */}
-        <div className="flex items-center gap-5 shrink-0 ml-4">
-          {timedOut && (
-            <span
-              className="font-shippori"
-              style={{ fontSize: '12px', letterSpacing: '0.12em', color: '#a07830' }}
-            >
-              {t(lang, 'game.timedOut')}
-            </span>
-          )}
-          {phase === 'drawing' && (
-            <Timer durationSeconds={90} onExpire={onTimerExpire} paused={phase !== 'drawing'} />
-          )}
-        </div>
+          </div>
+        )}
       </header>
 
       {/* ── Main: toolbar + canvas ────────────────── */}
       <div className="flex flex-1 overflow-hidden">
 
         {/* Desktop sidebar toolbar */}
-        <div className="hidden md:block">
+        <div className="hidden md:block h-full">
           <Toolbar
             layout="vertical"
             tool={tool} brushStyle={brushStyle} color={color} size={size} lang={lang}
@@ -308,26 +329,7 @@ export default function GamePage() {
                   border: '0.5px solid var(--rule)',
                 }}
               >
-                {/* Corner marks — like manuscript paper registration marks */}
-                {(['top-0 left-0', 'top-0 right-0', 'bottom-0 left-0', 'bottom-0 right-0'] as const).map((pos, i) => (
-                  <div
-                    key={i}
-                    className={`absolute ${pos} w-4 h-4 pointer-events-none`}
-                    style={{ zIndex: 2 }}
-                  >
-                    <svg
-                      viewBox="0 0 16 16" fill="none"
-                      style={{
-                        width: '16px', height: '16px',
-                        transform: `rotate(${i * 90}deg)`,
-                      }}
-                    >
-                      <path d="M1 15 L1 1 L15 1" stroke="var(--beni)" strokeWidth="1.2" strokeLinecap="round" opacity="0.45"/>
-                    </svg>
-                  </div>
-                ))}
-
-                <Canvas
+<Canvas
                   ref={canvasRef}
                   brushStyle={brushStyle}
                   color={color}
@@ -357,69 +359,58 @@ export default function GamePage() {
         </div>
       </div>
 
-      {/* ── Submit footer ─────────────────────────── */}
-      {phase === 'drawing' && (
-        <footer
-          className="shrink-0 flex items-center justify-between px-6 py-4"
-          style={{
-            background: 'var(--surface)',
-            borderTop: '0.5px solid var(--rule)',
-          }}
-        >
-          {/* Left: give up button */}
+      {/* ── Submit footer — always rendered to prevent layout shift ── */}
+      <footer
+        className="shrink-0 flex items-center justify-between px-6"
+        style={{
+          height: '56px',
+          background: 'var(--surface)',
+          borderTop: '0.5px solid var(--rule)',
+          visibility: phase === 'drawing' ? 'visible' : 'hidden',
+        }}
+      >
+          {/* Left: give up — text-only, minimal */}
           <button
             onClick={() => setShowGiveUpDialog(true)}
-            className="font-cormorant tracking-[0.1em]"
+            className="font-shippori"
             style={{
               color: 'var(--ink-3)',
-              border: '1px solid var(--rule)',
               background: 'transparent',
-              padding: '10px 24px',
-              fontSize: '1rem',
-              borderRadius: '2px',
+              border: 'none',
+              padding: '6px 4px',
+              fontSize: '0.82rem',
+              letterSpacing: '0.1em',
               cursor: 'pointer',
-              transition: 'all 0.15s',
+              transition: 'color 0.15s',
+              textDecoration: 'none',
             }}
-            onMouseEnter={e => {
-              (e.currentTarget as HTMLElement).style.color = 'var(--ink)';
-              (e.currentTarget as HTMLElement).style.borderColor = 'var(--ink-3)';
-            }}
-            onMouseLeave={e => {
-              (e.currentTarget as HTMLElement).style.color = 'var(--ink-3)';
-              (e.currentTarget as HTMLElement).style.borderColor = 'var(--rule)';
-            }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--ink-2)'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--ink-3)'; }}
           >
             {t(lang, 'game.giveUp')}
           </button>
 
-          {/* Right: submit button */}
+          {/* Right: submit — solid fill */}
           <button
             onClick={() => submit(false)}
-            className="group flex items-center gap-2 font-cormorant tracking-[0.12em] transition-colors"
+            className="flex items-center gap-2 font-cormorant tracking-[0.14em]"
             style={{
-              color: 'var(--beni)',
-              border: '1px solid var(--beni)',
-              background: 'transparent',
+              color: 'var(--surface)',
+              background: 'var(--beni)',
+              border: 'none',
               padding: '10px 36px',
-              fontSize: '1.15rem',
+              fontSize: '1.1rem',
               borderRadius: '2px',
               cursor: 'pointer',
-              transition: 'all 0.15s',
+              transition: 'opacity 0.15s',
             }}
-            onMouseEnter={e => {
-              (e.currentTarget as HTMLElement).style.background = 'var(--beni)';
-              (e.currentTarget as HTMLElement).style.color = 'var(--surface)';
-            }}
-            onMouseLeave={e => {
-              (e.currentTarget as HTMLElement).style.background = 'transparent';
-              (e.currentTarget as HTMLElement).style.color = 'var(--beni)';
-            }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.opacity = '0.82'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.opacity = '1'; }}
           >
             {t(lang, 'game.submit')}
-            <span style={{ transition: 'transform 0.15s', display: 'inline-block' }}>→</span>
+            <span style={{ display: 'inline-block' }}>→</span>
           </button>
         </footer>
-      )}
 
       {/* ── Give up confirmation dialog ────────────── */}
       {showGiveUpDialog && (

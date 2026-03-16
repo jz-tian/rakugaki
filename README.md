@@ -2,7 +2,7 @@
 
 **An AI-powered drawing game with a Japanese aesthetic.**
 
-Get a random prompt, draw it in 90 seconds, and let Gemini Vision score your work. Clear the threshold to advance — or retry until you do.
+Get a random prompt, draw it in 120 seconds, and let Gemini Vision score your work. Clear the threshold to advance — or retry until you do.
 
 ---
 
@@ -13,8 +13,8 @@ Get a random prompt, draw it in 90 seconds, and let Gemini Vision score your wor
 - **Three brush styles** — Normal, Pencil, and Ink (each with distinct stroke rendering)
 - **Flood fill** tool with click-to-fill, powered by a persistent off-screen canvas for performance
 - **20-color palette** plus a custom color picker
-- **Adjustable brush size** (1–30px) with a live dot preview
-- **Undo / Redo** with full history stack
+- **Adjustable brush size** (1–30px) via a compact slider
+- **Undo / Redo** with full history stack (snapshot saved on pointer-up, so redo always restores the completed stroke)
 - **Clear canvas** with a single action
 - Canvas is locked during loading and scoring phases to prevent accidental input
 
@@ -29,15 +29,16 @@ Get a random prompt, draw it in 90 seconds, and let Gemini Vision score your wor
 
 | Difficulty | Style Band | Pass Threshold |
 |---|---|---|
-| Easy | Single common objects (apple, sun, cat…) | 60 / 100 |
-| Normal | Everyday combined scenes | 75 / 100 |
-| Hard | Absurd / surreal scenarios | 85 / 100 |
+| Easy | Single universally recognisable objects — sun, apple, fish, star | 60 / 100 |
+| Normal | Simple objects with one added element or gentle action — cat napping, dog with a ball | 75 / 100 |
+| Hard | Short everyday scenes with 2–3 elements — person on a bicycle, child flying a kite | 85 / 100 |
 
-- Level number increases each time you pass; the prompt generator uses the level to calibrate complexity within the chosen style band
+- Level number increases each time you pass; a `levelTier()` function maps it to four complexity tiers (tiers 1–4) so the ramp is gentle — tier 1 stays at single-word concepts all the way through level 2
 - Fail → retry the same level; Pass → advance to the next
+- A **Reset to Lv.1** button appears on the home page whenever you are past level 1, so you can restart the progression without changing difficulty
 
-### 90-Second Timer
-- Every round is **90 seconds**, regardless of difficulty
+### 120-Second Timer
+- Every round is **120 seconds**, regardless of difficulty
 - Displayed as an **enso-style circular ring** that depletes clockwise — powered by SVG `stroke-dashoffset` with a 1s linear transition per tick for a smooth sweep
 - Ring and numeral turn vermillion with a gentle pulse animation at ≤ 20 seconds remaining
 - Timer auto-submits when it reaches zero; the result page notes the time-out
@@ -49,7 +50,7 @@ Get a random prompt, draw it in 90 seconds, and let Gemini Vision score your wor
 ### Gallery
 - Every completed round (pass or fail) is saved to **localStorage** (up to 50 works)
 - The gallery on the home page shows all past works as cards with score stamps in hanko-seal style
-- Click any card to **open a lightbox** with the drawing at full size, the prompt, and the score
+- Click any card to **open a lightbox** with the drawing at full size, the prompt, score, and the AI's comment
 - Works can be **deleted** from the lightbox with a two-step inline confirmation
 
 ### Internationalisation
@@ -92,7 +93,7 @@ app/
 components/
   Canvas.tsx            # Drawing engine (Pointer Events, brush/eraser/fill, undo/redo)
   Toolbar.tsx           # Tool selector sidebar
-  Timer.tsx             # 90s enso-ring countdown
+  Timer.tsx             # 120s enso-ring countdown
   LanguageToggle.tsx    # EN / 中文 toggle
   GalleryCard.tsx       # Past-work card with score stamp and lightbox
 

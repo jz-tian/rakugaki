@@ -104,20 +104,6 @@ export default function GalleryCard({ work, lang, onDelete }: Props) {
             }}
             onClick={e => e.stopPropagation()}
           >
-            {/* Corner marks */}
-            {([
-              'top-0 left-0',
-              'top-0 right-0',
-              'bottom-0 left-0',
-              'bottom-0 right-0',
-            ] as const).map((pos, i) => (
-              <div key={i} className={`absolute ${pos} w-4 h-4 pointer-events-none`} style={{ zIndex: 2 }}>
-                <svg viewBox="0 0 16 16" fill="none" style={{ width: '16px', height: '16px', transform: `rotate(${i * 90}deg)` }}>
-                  <path d="M1 15 L1 1 L15 1" stroke="var(--beni)" strokeWidth="1.2" strokeLinecap="round" opacity="0.45"/>
-                </svg>
-              </div>
-            ))}
-
             {/* Drawing */}
             <div className="aspect-[4/3] bg-white flex items-center justify-center p-6">
               {work.imageBase64 ? (
@@ -127,6 +113,21 @@ export default function GalleryCard({ work, lang, onDelete }: Props) {
                 <div className="w-full h-full bg-stone-100" />
               )}
             </div>
+
+            {/* AI comment */}
+            {work.comment && (
+              <div
+                className="px-5 py-3"
+                style={{ borderTop: '0.5px solid var(--rule)', background: 'oklch(13% 0.018 258 / 0.02)' }}
+              >
+                <p
+                  className="font-cormorant italic text-center leading-relaxed"
+                  style={{ fontSize: '0.92rem', color: 'var(--ink-2)', letterSpacing: '0.03em' }}
+                >
+                  &ldquo;{work.comment}&rdquo;
+                </p>
+              </div>
+            )}
 
             {/* Footer bar */}
             <div

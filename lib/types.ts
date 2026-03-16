@@ -30,6 +30,7 @@ export interface PastWork {
   prompt: string;
   imageBase64: string;
   score: number;
+  comment?: string;
   level: number;
   difficulty: Difficulty;
   timestamp: number;
