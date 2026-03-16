@@ -16,24 +16,24 @@ function getRedis(): Redis {
   return _redis;
 }
 
-/** 10 new games per IP per 24 h */
+/** 5 new games per IP per 24 h */
 export function getPromptLimiter(): Ratelimit {
   if (!_promptLimiter) {
     _promptLimiter = new Ratelimit({
       redis:   getRedis(),
-      limiter: Ratelimit.fixedWindow(10, '24 h'),
+      limiter: Ratelimit.fixedWindow(5, '24 h'),
       prefix:  'rl:prompt',
     });
   }
   return _promptLimiter;
 }
 
-/** 20 submissions per IP per 24 h (covers retries within sessions) */
+/** 10 submissions per IP per 24 h (covers retries within sessions) */
 export function getScoreLimiter(): Ratelimit {
   if (!_scoreLimiter) {
     _scoreLimiter = new Ratelimit({
       redis:   getRedis(),
-      limiter: Ratelimit.fixedWindow(20, '24 h'),
+      limiter: Ratelimit.fixedWindow(10, '24 h'),
       prefix:  'rl:score',
     });
   }
@@ -47,4 +47,14 @@ export function getClientIp(req: Request): string {
     req.headers.get('x-real-ip') ??
     'unknown'
   );
+}
+
+/**
+ * Returns true if the IP is in the RATE_LIMIT_BYPASS_IPS env var
+ * (comma-separated list). Use this to whitelist your own IPs.
+ */
+export function isExempt(ip: string): boolean {
+  const list = process.env.RATE_LIMIT_BYPASS_IPS ?? '';
+  if (!list) return false;
+  return list.split(',').map(s => s.trim()).includes(ip);
 }

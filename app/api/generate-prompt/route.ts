@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generatePrompt } from '@/lib/gemini';
 import { signToken } from '@/lib/promptToken';
-import { getPromptLimiter, getClientIp } from '@/lib/ratelimit';
+import { getPromptLimiter, getClientIp, isExempt } from '@/lib/ratelimit';
 import type { Difficulty, Language } from '@/lib/types';
 
 export const runtime = 'nodejs';
@@ -32,11 +32,14 @@ export async function POST(req: NextRequest) {
 
   // Rate limiting — skipped silently in local dev (no env vars set)
   if (process.env.UPSTASH_REDIS_REST_URL) {
-    try {
-      const { success } = await getPromptLimiter().limit(getClientIp(req));
-      if (!success) return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
-    } catch (e) {
-      console.error('[ratelimit:prompt]', e); // don't block the request if Redis is down
+    const ip = getClientIp(req);
+    if (!isExempt(ip)) {
+      try {
+        const { success } = await getPromptLimiter().limit(ip);
+        if (!success) return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
+      } catch (e) {
+        console.error('[ratelimit:prompt]', e); // don't block the request if Redis is down
+      }
     }
   }
 

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { scoreDrawing } from '@/lib/gemini';
 import { verifyToken } from '@/lib/promptToken';
-import { getScoreLimiter, getClientIp } from '@/lib/ratelimit';
+import { getScoreLimiter, getClientIp, isExempt } from '@/lib/ratelimit';
 import { PASS_THRESHOLDS } from '@/lib/types';
 import type { Difficulty, Language } from '@/lib/types';
 
@@ -33,11 +33,14 @@ export async function POST(req: NextRequest) {
 
   // Rate limiting — skipped silently in local dev (no env vars set)
   if (process.env.UPSTASH_REDIS_REST_URL) {
-    try {
-      const { success } = await getScoreLimiter().limit(getClientIp(req));
-      if (!success) return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
-    } catch (e) {
-      console.error('[ratelimit:score]', e);
+    const ip = getClientIp(req);
+    if (!isExempt(ip)) {
+      try {
+        const { success } = await getScoreLimiter().limit(ip);
+        if (!success) return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
+      } catch (e) {
+        console.error('[ratelimit:score]', e);
+      }
     }
   }
 
