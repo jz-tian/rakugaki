@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { scoreDrawing } from '@/lib/gemini';
 import { verifyToken } from '@/lib/promptToken';
+import { getScoreLimiter, getClientIp } from '@/lib/ratelimit';
 import { PASS_THRESHOLDS } from '@/lib/types';
 import type { Difficulty, Language } from '@/lib/types';
 
@@ -28,6 +29,16 @@ export async function POST(req: NextRequest) {
   }
   if (!VALID_LANGUAGES.has(language as Language)) {
     return NextResponse.json({ error: 'Invalid language' }, { status: 400 });
+  }
+
+  // Rate limiting — skipped silently in local dev (no env vars set)
+  if (process.env.UPSTASH_REDIS_REST_URL) {
+    try {
+      const { success } = await getScoreLimiter().limit(getClientIp(req));
+      if (!success) return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
+    } catch (e) {
+      console.error('[ratelimit:score]', e);
+    }
   }
 
   let payload: ReturnType<typeof verifyToken>;

@@ -36,6 +36,7 @@
   "result.timedOut": "⏰ 时间到",
   "result.expired": "会话已过期，请重新开始。",
   "result.newRound": "新一局",
+  "error.rateLimit": "今日次数已用完，明天再来吧。",
   "error.serviceBusy": "服务繁忙，请稍后再试。",
   "error.timeout": "请求超时，请重试。",
   "error.unknown": "出现错误，请重试。",

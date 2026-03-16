@@ -36,6 +36,7 @@
   "result.timedOut": "⏰ Time's Up",
   "result.expired": "Session expired — please start a new round.",
   "result.newRound": "New Round",
+  "error.rateLimit": "Daily limit reached. Come back tomorrow!",
   "error.serviceBusy": "Service is busy. Please wait a moment.",
   "error.timeout": "Request timed out. Please try again.",
   "error.unknown": "Something went wrong. Please try again.",

@@ -86,6 +86,7 @@ export default function GamePage() {
         body: JSON.stringify({ level: lv, difficulty: diff, language }),
         signal: ctrl.signal,
       });
+      if (res.status === 429) { setPhase('error'); setErrorMsg(t(language, 'error.rateLimit')); return; }
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
       setPrompt(data.prompt);
@@ -119,11 +120,8 @@ export default function GamePage() {
         }),
       });
 
-      if (res.status === 400) {
-        setPhase('error');
-        setErrorMsg(t(langRef.current, 'result.expired'));
-        return;
-      }
+      if (res.status === 400) { setPhase('error'); setErrorMsg(t(langRef.current, 'result.expired')); return; }
+      if (res.status === 429) { setPhase('error'); setErrorMsg(t(langRef.current, 'error.rateLimit')); return; }
       if (!res.ok) {
         setPhase('error');
         setErrorMsg(t(langRef.current, res.status === 503 ? 'error.serviceBusy' : 'error.unknown'));
