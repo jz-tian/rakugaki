@@ -12,12 +12,34 @@ npx tsc --noEmit     # Type check only (faster than build)
 
 ## Environment
 
-Two required env vars. Copy `.env.example` to `.env.local`:
+### Local dev — `.env.local`
 
 ```
 GEMINI_API_KEY=...      # From https://aistudio.google.com/app/apikey
 PROMPT_SECRET=...       # openssl rand -hex 32
 ```
+
+Rate limiting is **disabled** locally (the limiter is gated on `UPSTASH_REDIS_REST_URL` being set).
+
+### Vercel — all env vars required for production
+
+| Variable | Where to get it | Notes |
+|---|---|---|
+| `GEMINI_API_KEY` | https://aistudio.google.com/app/apikey | Required |
+| `PROMPT_SECRET` | `openssl rand -hex 32` | Required — keep same value across redeploys |
+| `UPSTASH_REDIS_REST_URL` | Upstash console → your database → REST API | Required for rate limiting |
+| `UPSTASH_REDIS_REST_TOKEN` | Same page, the token below the URL | Required for rate limiting |
+| `RATE_LIMIT_BYPASS_IPS` | Your own public IP(s), comma-separated | Optional — IPs listed here are never rate-limited. Check your IP at https://api.ipify.org |
+
+**Rate limits (per IP per 24 h):**
+- `/api/generate-prompt` — 5 requests (= 5 new games)
+- `/api/score` — 10 requests (covers retries within sessions)
+
+**Upstash setup (free tier, one-time):**
+1. Sign up at https://upstash.com → Create Database → choose region closest to Vercel deployment
+2. Copy `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` from the REST API tab
+3. Add all five variables above to Vercel → Settings → Environment Variables
+4. Redeploy (or push a new commit) — rate limiting activates automatically
 
 ## Architecture
 
@@ -33,7 +55,9 @@ components/
   Toolbar.tsx           # Tool selector sidebar
   Timer.tsx             # 3-min countdown
   LanguageToggle.tsx    # EN / 中文 toggle
-  GalleryCard.tsx       # Past-work card with score stamp and AI-comment lightbox
+  GalleryCard.tsx       # Past-work card with score stamp, AI-comment lightbox, JPG export
+lib/
+  ratelimit.ts          # Upstash rate limiter + IP whitelist (isExempt)
 lib/
   gemini.ts             # Gemini client (8s timeout, 429 retry-once)
   promptToken.ts        # HMAC-SHA256 sign / verify
