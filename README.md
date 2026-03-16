@@ -51,6 +51,7 @@ Get a random prompt, draw it in 120 seconds, and let Gemini Vision score your wo
 - Every completed round (pass or fail) is saved to **localStorage** (up to 50 works)
 - The gallery on the home page shows all past works as cards with score stamps in hanko-seal style
 - Click any card to **open a lightbox** with the drawing at full size, the prompt, score, and the AI's comment
+- **Export as JPG** directly from the lightbox — a toggle controls whether the AI comment is composited into a washi-toned footer strip on the exported image (score stamp + wrapped comment text + prompt label); defaults to on when a comment exists
 - Works can be **deleted** from the lightbox with a two-step inline confirmation
 
 ### Internationalisation
